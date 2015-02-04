@@ -59,6 +59,8 @@ class UniprotUpload:
     urlBlastdb="ftp://ftp.uniprot.org/pub" # main ftp
     #urlBlastdb="ftp://ftp.ebi.ac.uk/pub" # UK mirror
     
+    urlTaxonomy="http://www.uniprot.org/taxonomy/?query=*&compress=yes&format=tab"
+    
     TABLES = {}
     TABLES['uniprot'] = (
                          "CREATE TABLE `uniprot` ("
