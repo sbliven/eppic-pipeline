@@ -179,6 +179,9 @@ class BlastCache:
                 
         
 if __name__=="__main__":
-    workdir=sys.argv[1]
-    p=BlastCache(workdir)
-    p.runAll()
+    if len(sys.argv[0])==2:
+        workdir=sys.argv[1]
+        p=BlastCache(workdir)
+        p.runAll()
+    else:
+        print "Usage: python %s <path to working dir>"%(sys.argv[0])
