@@ -329,7 +329,7 @@ class UniprotUpload:
                 self.writeLog("ERROR: Creating unique sequences failed",15)
                 sys.exit(1)
             else:
-                splitqueries=call(["split","-l","27000","%s/queries.list"%(self.fastaFolder),"queries_"])
+                splitqueries=call(["split","-l","30000","%s/queries.list"%(self.fastaFolder),"queries_"])
                 mvfiels=getstatusoutput("mv queries_* %s/"%(self.fastaFolder))
                 if mvfiels[0] or splitqueries:
                     self.writeLog("ERROR: Can't split queries",15)
@@ -339,8 +339,8 @@ class UniprotUpload:
                     
     def prepareFileTransfer(self):
         self.writeLog("INFO: Preparing for file transfer",0)
-        mvuniprot=call(["mv",self.uniprotDir,"%s/"%(self.clusterFolder)])
         mkcdir=getstatusoutput("mkdir %s"%(self.clusterFolder))
+        mvuniprot=call(["mv",self.uniprotDir,"%s/"%(self.clusterFolder)])
         if mkcdir[0]:
             self.writeLog("ERROR: Cant create %s"%(self.clusterFolder), 16)
             sys.exit(1)
