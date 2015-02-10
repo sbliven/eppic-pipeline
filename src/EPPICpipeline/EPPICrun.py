@@ -21,7 +21,7 @@ class EPPICrun:
         self.chunksize=30000
         self.logfile=open("%s/eppic_run_%s.log"%(self.workDir,strftime("%d%m%Y",localtime())),'a')
         self.getUniprotVersion()
-        self.uniprot="uniprot_%"%(self.version)
+        self.uniprot="uniprot_%s"%(self.version)
         self.getLocalBlastdir()
         self.input="%s/input"%(self.workDir)
         self.output="%s/output"%(self.workDir)
