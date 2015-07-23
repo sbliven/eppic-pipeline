@@ -67,18 +67,18 @@ class BlastCache:
         self.writeLog("INFO: Checking memory space")
         df=getstatusoutput("/usr/lpp/mmfs/bin/mmlsquota -u  %s merliny"%(self.userName))
         if df[0]:
-            self.writeLog("ERROR: Can't check the availble freespace mmlsquota")
+            self.writeLog("ERROR: Can't check the available freespace with mmlsquota")
             sys.exit(1)
         else:
             dfout=[i for i in df[1].split("\n")[2].split(" ") if i!=""]
             freeSpace=(atof(dfout[3])-atof(dfout[2]))/(1024*1024)
             if freeSpace>400:
-                self.writeLog("INFO: Having enough memory")
+                self.writeLog("INFO: There is enough free space to proceed")
             else:
                 self.writeLog("ERROR: Only %.2f GB is available; 400 GB required"%(freeSpace))
                 sys.exit(1)
     def copyUniprotToNodes(self):
-        self.writeLog("INFO: Copying uniprot files to computing nodes")
+        self.writeLog("INFO: Copying UniProt files to computing nodes")
         for node in self.nodes:
             checkfolder=getstatusoutput("ssh %s ls /scratch/%s"%(node,self.userName))
             if checkfolder[0]== 512:
@@ -88,16 +88,16 @@ class BlastCache:
                 sys.exit(1)
             else:
                 self.writeLog("INFO: /scratch/%s exists in %s"%(self.userName,node))
-            self.writeLog("INFO: Copying uniprot files to %s"%(node))
+            self.writeLog("INFO: Copying UniProt files to %s"%(node))
             cpfolder=getstatusoutput("rsync -az %s/%s %s:/scratch/%s/"%(self.workDir,self.uniprot,node,self.userName))
             if cpfolder[0]:
-                self.writeLog("ERROR: Copying uniprot files to %s failed"%(node))
+                self.writeLog("ERROR: Copying UniProt files to %s failed"%(node))
                 sys.exit(1)
             else:
-                self.writeLog("INFO: uniprot files copied to %s"%(node))
+                self.writeLog("INFO: UniProt files copied to %s"%(node))
     
     def copyUniprotThead(self):
-        self.writeLog("INFO: uniprot file copying starting with %s threads"%(self.threads))
+        self.writeLog("INFO: UniProt file copying starting with %s threads"%(self.threads))
         chunksize=int(len(self.nodes)/self.threads)
         crange=range(0,len(self.nodes),chunksize)
         if crange[-1]!=len(self.nodes):crange.append(len(self.nodes))
@@ -126,7 +126,7 @@ class BlastCache:
              
                 
     def checkUniprotinNodes(self):
-        self.writeLog("INFO: Checking uniprot files in nodes")
+        self.writeLog("INFO: Checking UniProt files in nodes")
         fileSize=[]
         for node in self.nodes:
             checkfiles=getstatusoutput("ssh %s du -hs /scratch/%s/%s"%(node,self.userName,self.uniprot))
@@ -237,7 +237,7 @@ class myThread(Thread):
         self.uniprot=uniprot
         self.writeLog=writelog
     def copyUniprotToNodes(self):
-        self.writeLog("INFO: Copying uniprot files to computing nodes")
+        self.writeLog("INFO: Copying UniProt files to computing nodes")
         for node in self.nodes:
             checkfolder=getstatusoutput("ssh %s ls /scratch/%s"%(node,self.userName))
             if checkfolder[0]== 512:
@@ -247,14 +247,14 @@ class myThread(Thread):
                 sys.exit(1)
             else:
                 self.writeLog("INFO: /scratch/%s exists in %s"%(self.userName,node))
-            self.writeLog("INFO: Copying uniprot files to %s"%(node))
+            self.writeLog("INFO: Copying UniProt files to %s"%(node))
             cpfolder=getstatusoutput("rsync -az %s/%s %s:/scratch/%s/"%(self.workDir,self.uniprot,node,self.userName))
             #cpfolder=getstatusoutput("ssh %s ls /scratch/%s"%(node,self.userName))
             if cpfolder[0]:
-                self.writeLog("ERROR: Copying uniprot files to %s failed"%(node))
+                self.writeLog("ERROR: Copying UniProt files to %s failed"%(node))
                 sys.exit(1)
             else:
-                self.writeLog("INFO: uniprot files copied to %s\n%s"%(node,cpfolder[1]))
+                self.writeLog("INFO: UniProt files copied to %s\n%s"%(node,cpfolder[1]))
     def run(self):
         self.copyUniprotToNodes()
                 
