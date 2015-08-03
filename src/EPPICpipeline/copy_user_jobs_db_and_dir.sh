@@ -1,7 +1,8 @@
 #!/bin/bash
 
-# script to copy user jobs to the next version of eppicdb and the user jobs files to the corresponding directories
-# 150803
+# Script to copy user jobs to the next version of eppicdb and the user jobs files to the corresponding directories
+# To be used at the end of the pipeline
+# 20150803
 
 rm -f tmp.list
  
@@ -30,7 +31,7 @@ fi
 echo "Copying user job files from eppic_${SOURCE_DATE} dir to eppic_${TARGET_DATE} dir, see log for details"
 for fname in $(awk '{print $1}' "tmp.list")
 do
-cp -rv /data/webapps/files_$SOURCE_DATE/$fname /bigdata/eppic_$TARGET_DATE/ >> copy_eppic_files_${SOURCE_DATE}_to_eppic_${TARGET_DATE}.log
+cp -rv /data/webapps/files_$SOURCE_DATE/$fname /bigdata/eppic_$TARGET_DATE/ >> copy_eppic_files_$SOURCE_DATE_to_eppic_$TARGET_DATE.log
 done
 
 
