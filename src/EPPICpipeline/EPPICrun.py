@@ -31,7 +31,7 @@ class EPPICrun:
     def getUniprotVersion(self):
         universion=getstatusoutput("cat %s | grep LOCAL_UNIPROT_DB_NAME"%(self.EPPICCONF))
         if universion[0]:
-            self.writeLog("ERROR: Can't find uniport version from %s file"%(self.EPPICCONF))
+            self.writeLog("ERROR: Can't find UniProt version from %s file"%(self.EPPICCONF))
             sys.exit(1)
         else:
             self.version=universion[1].split("uniprot_")[-1]
@@ -47,7 +47,7 @@ class EPPICrun:
     def getLocalBlastdir(self):
         universion=getstatusoutput("cat %s | grep BLAST_CACHE_DIR"%(self.EPPICCONF))
         if universion[0]:
-            self.writeLog("ERROR: Can't find uniport version from %s file"%(self.EPPICCONF))
+            self.writeLog("ERROR: Can't find UniProt version from %s file"%(self.EPPICCONF))
             sys.exit(1)
         else:
             self.blastdir=universion[1].split("=")[-1]
@@ -92,35 +92,35 @@ class EPPICrun:
             chfld="%s/%s"%(self.output,lab)
             mkfldr=getstatusoutput("mkdir %s"%(chfld))
             if mkfldr[0]:
-                self.writeLog("ERROR: Can't creatre %s"%(chfld))
+                self.writeLog("ERROR: Can't create %s"%(chfld))
                 sys.exit(1)
             else:
                 self.writeLog("INFO: %s created"%(chfld))
             datfld="%s/data"%(chfld)
             mkfldr=getstatusoutput("mkdir %s"%(datfld))
             if mkfldr[0]:
-                self.writeLog("ERROR: Can't creatre %s"%(datfld))
+                self.writeLog("ERROR: Can't create %s"%(datfld))
                 sys.exit(1)
             else:
                 self.writeLog("INFO: %s created"%(datfld))
             datfld="%s/data/all"%(chfld)
             mkfldr=getstatusoutput("mkdir %s"%(datfld))
             if mkfldr[0]:
-                self.writeLog("ERROR: Can't creatre %s"%(datfld))
+                self.writeLog("ERROR: Can't create %s"%(datfld))
                 sys.exit(1)
             else:
                 self.writeLog("INFO: %s created"%(datfld))
             datfld="%s/data/divided"%(chfld)
             mkfldr=getstatusoutput("mkdir %s"%(datfld))
             if mkfldr[0]:
-                self.writeLog("ERROR: Can't creatre %s"%(datfld))
+                self.writeLog("ERROR: Can't create %s"%(datfld))
                 sys.exit(1)
             else:
                 self.writeLog("INFO: %s created"%(datfld))
             datfld="%s/logs"%(chfld)
             mkfldr=getstatusoutput("mkdir %s"%(datfld))
             if mkfldr[0]:
-                self.writeLog("ERROR: Can't creatre %s"%(datfld))
+                self.writeLog("ERROR: Can't create %s"%(datfld))
                 sys.exit(1)
             else:
                 self.writeLog("INFO: %s created"%(datfld))
