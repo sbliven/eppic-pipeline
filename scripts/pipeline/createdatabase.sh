@@ -1,14 +1,45 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# Runs or creates a docker container for the eppic mysql database.  Existing
+# containers are started if found, and the current eppic database is created if
+# needed and configured. Note that the mysql root credentials must be defined
+# in credentials.conf and must match the existing database at $MYSQL_DATA, if
+# any.
+
+
+# Get the base directory of the argument.
+# Can resolve single symlinks if readlink is installed
+function scriptdir {
+    cd "$(dirname "$1")"
+    cd "$(dirname "$(readlink "$1" 2>/dev/null || basename "$1" )")"
+    pwd
+}
+# Bootstrap locating config directory
+: "${PIPELINE_ROOT:=$(scriptdir "$(scriptdir "$0")/../../.")}"
 
 # load config variables and passwords
-source credentials.conf
-source pipeline.conf
+source "${PIPELINE_ROOT}/config/credentials.conf"
+source "${PIPELINE_ROOT}/config/pipeline.conf"
 
+# Required parameters
+: "${DOCKER:=$(which docker)}"
+: "${DOCKER:?Docker not installed or DOCKER not configured}"
+: "${DOCKER_DB_CONTAINER:?Not configured}"
+: "${MYSQL_DATA:?Not configured}"
+: "${DB_USER:?Not configured}"
+: "${DB_PASSWORD:?Not configured}"
+: "${DB_ROOT_PASSWORD:?Not configured}"
+: "${EPPIC_DB:?Not configured}"
+: "${UNIPROT_DB:?Not configured}"
+
+
+# Check for existing containers
 RUNNING=$($DOCKER inspect -f '{{.State.Running}}' "$DOCKER_DB_CONTAINER" 2>/dev/null)
 if [ $? -eq 1 ]; then
     # Container didn't exist
     echo "Creating new docker container '$DOCKER_DB_CONTAINER' to run the database"
     mkdir -p "$MYSQL_DATA" || exit $?
+
+    # Create new container for the database, with data stored at $MYSQL_DATA
     $DOCKER run \
         --detach \
         --name "$DOCKER_DB_CONTAINER" \
