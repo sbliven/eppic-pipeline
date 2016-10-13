@@ -1,0 +1,6 @@
+#!/bin/bash
+
+mkdir -p data/pdb/data/structures/all/mmCIF
+mkdir -p data/blast_cache
+mkdir -p data/uniprot
+

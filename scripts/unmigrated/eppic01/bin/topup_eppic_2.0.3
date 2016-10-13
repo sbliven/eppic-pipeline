@@ -1,0 +1,132 @@
+#!/bin/bash
+
+# --------------------------------------------------------------
+# Configuration file for eppic precalculation on merlin
+#
+# Author: Kumaran Baskaran
+# Date: 14-06-2013
+# Modified : 26-11-2013
+# 
+# ----------------------------------------------------------------
+
+# -------- PATH Variables----------------------------------------
+EPPIC=/home/eppicweb/software/bin/eppic
+EPPICCONF=/home/eppicweb/.eppic.conf
+MMCIF_DIR=/data/dbs/pdb/data/structures/all/mmCIF
+WORKDIR=/home/eppicweb/topup
+RSYNCLOG=`ls /data/dbs/pdb/ -tr | tail -1` # getting the latest pdb rsync log file
+#---------------------------------------------------------------
+
+
+
+RUN=topup
+CHUNK_SIZE=30000
+# soft and hard run time limits (default is 1 hour)
+SRT="03:00:00"
+HRT="03:00:30"
+MAXRAM="8G"
+source /var/lib/gridengine/default/common/settings.sh
+if [ ! -f "$EPPIC" ] 
+then
+	echo "ERROR : Missing file $EPPIC"
+	exit 1
+fi
+
+if [ ! -f "$EPPICCONF" ] 
+then
+	echo "ERROR : Missing config file $EPPIC_CONF"
+	exit 1
+fi
+
+wget ftp://ftp.ebi.ac.uk/pub/databases/msd/sifts/text/pdb_chain_uniprot.lst -O /data/dbs/uniprot/uniprot_2013_08/pdb_chain_uniprot.lst
+
+if [ -d $WORKDIR/input ]; then echo "WARNING: Directory $WORKDIR/input already exists"; else mkdir $WORKDIR/input; fi
+if [ -d $WORKDIR/qsubscripts ]; then echo "WARNING: Directory $WORKDIR/qsubscripts already exists"; else mkdir $WORKDIR/qsubscripts; fi
+if [ -d $WORKDIR/output ]; then echo "WARNING: Directory $WORKDIR/output already exists"; else mkdir $WORKDIR/output; fi
+
+
+
+
+#Creating full list of pdbs
+#rsyncpdb
+CHECKNEW=`fgrep divided /data/dbs/pdb/$RSYNCLOG | awk '{print $1}' | wc -l`
+if [ $CHECKNEW -gt 0 ]; then
+	fgrep divided /data/dbs/pdb/$RSYNCLOG | awk '{print $1}'|xargs -n1 basename |sed "s/\(....\).*/\1/" > $WORKDIR/input/pdb_all.list || exit 1
+else
+	echo "No new entries found (or) problem with rsync"
+	exit 0
+fi
+CHECKOBSOLETE=`fgrep deleting /data/dbs/pdb/$RSYNCLOG | awk '{print $2}' | wc -l`
+if [ $CHECKOBSOLETE -gt 0 ]; then
+	fgrep deleting /data/dbs/pdb/$RSYNCLOG | awk '{print $2}' | xargs -n1 basename |sed "s/\(....\).*/\1/" | sort | uniq > $WORKDIR/input/obsolete.list || exit 1
+else
+	rm $WORKDIR/input/obsolete.list
+	touch $WORKDIR/input/obsolete.list
+fi
+PDBLIST=$WORKDIR/input/pdb_all.list
+OBSOLETE=$WORKDIR/input/obsolete.list
+MAXJOBS=`grep -v "^#" $PDBLIST | wc -l`
+if [ $MAXJOBS -ge 500 ]
+then
+	echo "ERROR : EPPIC-TOPUP TERMINATED DUE TO FLOODING OF PDB ENTRIES($MAXJOBS PDBS ADDED OR MODIFIED)"
+	exit 1
+fi
+let CHUNKS=($MAXJOBS/$CHUNK_SIZE)+1
+let LAST_CHUNK=$MAXJOBS%$CHUNK_SIZE 
+
+
+
+for i in `seq 1 $CHUNKS`
+do
+	PDBCHUNK=$WORKDIR/input/pdbchunk$i$RUN.list
+	let ttt=$i*$CHUNK_SIZE
+	JOBNAME=topup$i
+	if [ $i -lt $CHUNKS ]; then
+		head -$ttt $PDBLIST | tail -$CHUNK_SIZE > $PDBCHUNK
+		JOB_SIZE=$CHUNK_SIZE
+	else
+		tail -$LAST_CHUNK $PDBLIST > $PDBCHUNK
+		JOB_SIZE=$LAST_CHUNK
+	fi
+	if [ -d $WORKDIR/output/chunk$i ]; then echo "WARNING: Directory $WORKDIR/output/chunk$i already exists"; else mkdir $WORKDIR/output/chunk$i; fi
+	if [ -d $WORKDIR/output/chunk$i/data ]; then echo "WARNING: Directory $WORKDIR/output/chunk$i/data already exists"; else mkdir $WORKDIR/output/chunk$i/data; fi
+	if [ -d $WORKDIR/output/chunk$i/logs ]; then echo "WARNING: Directory $WORKDIR/output/chunk$i/logs already exists"; else mkdir $WORKDIR/output/chunk$i/logs; fi
+	if [ -d $WORKDIR/output/chunk$i/data/all ]; then echo "WARNING: Directory $WORKDIR/output/chunk$i/data/all already exists"; else mkdir $WORKDIR/output/chunk$i/data/all; fi
+	if [ -d $WORKDIR/output/chunk$i/data/divided ]; then echo "WARNING: Directory $WORKDIR/output/chunk$i/data/divided already exists"; else mkdir $WORKDIR/output/chunk$i/data/divided; fi
+	ERRORDIR=$WORKDIR/output/chunk$i/logs
+	ER_ESC="${ERRORDIR//\//\\/}"
+	IN_ESC="${PDBCHUNK//\//\\/}"
+	OUTFOLDER=$WORKDIR/output/chunk$i
+	OUT_ESC="${OUTFOLDER//\//\\/}"
+	EPPIC_ESC="${EPPIC//\//\\/}"
+	EPPICCONF_ESC="${EPPICCONF//\//\\/}"
+	sed s/JOBNAME/$JOBNAME/g /home/eppicweb/topup/template.sh | sed s/LOGDIR/$ER_ESC/g |sed s/MAXTASK/$JOB_SIZE/g | sed s/MAXRAM/$MAXRAM/g | sed s/TIMEMIN/$SRT/g | sed s/TIMEMAX/$HRT/g | sed s/INPUTLIST/$IN_ESC/g | sed s/OUTFOLDER/$OUT_ESC/g | sed s/EPPIC/$EPPIC_ESC/g |sed s/CONF/$EPPICCONF_ESC/g > $WORKDIR/qsubscripts/eppic_chunk$i$RUN.sh
+	chmod a+x $WORKDIR/qsubscripts/eppic_chunk$i$RUN.sh
+done
+qsub $WORKDIR/qsubscripts/eppic_chunk$i$RUN.sh
+JOBS=`qstat | grep "topup" | wc -l`
+COUNTER=0
+while [ $JOBS -gt 0 ]; do
+	sleep 1800
+	JOBS=`qstat | grep "topup" | wc -l`
+	let COUNTER=COUNTER+1
+	if [ $COUNTER -gt 15 ]; then JOBS=-1; fi
+done
+
+if [ $JOBS -lt 0 ]; then
+	echo "ERROR : Waited too long to finish the jobs. May be qsub is handling lot of user jobs.. DO MANUAL UPLOAD"
+	exit 1
+else
+	echo " Upload begins"
+	rsync -az /home/eppicweb/topup/output/chunk1/data/divided /data/webapps/files_2013_08/
+	/home/eppicweb/bin/create_symlinks.sh /data/webapps/files_2013_08 > /dev/null
+	/home/eppicweb/bin/upload_to_db -d /data/webapps/files_2013_08/ -f /home/eppicweb/topup/input/pdb_all.list -F -o > /dev/null
+	RMJOBS=`grep -v "^#" $OBSOLETE | wc -l`
+	if [ $RMJOBS -lt 10 ]; then 
+		/home/eppicweb/bin/upload_to_db -d /data/webapps/files_2013_08/ -r $OBSOLETE -o
+	else
+		echo "ERROR : $RMJOBS Obsolete entries were found. Check and remove it manually"
+	fi
+	echo "EPPIC-TOPUP FINISHED SUCCESSFULLY: $MAXJOBS PDBS WERE UPDATED AND $RMJOBS OBSOLETE ENTRIES WERE DELETED"
+fi
+

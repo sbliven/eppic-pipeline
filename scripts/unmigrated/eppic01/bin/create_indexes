@@ -1,0 +1,9 @@
+#!/bin/bash
+
+db=$1
+mysql <<EOF
+
+use $db;
+create index pdbName_idx on PdbScore(pdbName,expMethod,resolution);
+create index job_idx on Job(status,jobId,input);
+EOF

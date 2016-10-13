@@ -1,0 +1,65 @@
+#!/bin/bash
+
+# --------------------------------------------------------------
+# Configuration file for eppic precalculation on merlin
+#
+# Author: Kumaran Baskaran
+# Date: 14-06-2013
+# Modified : 26-11-2013
+# 
+# ----------------------------------------------------------------
+
+# -------- PATH Variables----------------------------------------
+EPPIC=/home/eppicweb/software/bin/eppic
+EPPICCONF=/home/eppicweb/.eppic.conf
+MMCIF_DIR=/data/dbs/pdb/data/structures/all/mmCIF
+WORKDIR=/home/eppicweb/topup
+RSYNCLOG=`ls /data/dbs/pdb/ -tr | tail -1` # getting the latest pdb rsync log file
+#---------------------------------------------------------------
+UNIPROT_VERSION=`fgrep LOCAL_UNIPROT_DB_NAME= $EPPICCONF | sed 's/LOCAL_UNIPROT_DB_NAME=uniprot_//g'`
+
+RUN=topup
+CHUNK_SIZE=30000
+# soft and hard run time limits (default is 1 hour)
+SRT="12:00:00"
+HRT="12:00:30"
+MAXRAM="8G"
+if [ ! -f "$EPPIC" ] 
+then
+	echo "ERROR : Missing file $EPPIC"
+	exit 1
+fi
+
+if [ ! -f "$EPPICCONF" ] 
+then
+	echo "ERROR : Missing config file $EPPIC_CONF"
+	exit 1
+fi
+
+#Creating full list of pdbs
+#rsyncpdb
+CHECKNEW=`fgrep -v deleting /data/dbs/pdb/$RSYNCLOG | grep cif.gz | grep -v divided |xargs -n1 basename | sed "s/\(....\).*/\1/" | wc -l`
+ONLYNEW=`fgrep divided /data/dbs/pdb/$RSYNCLOG | awk '{print $1}'|xargs -n1 basename |sed "s/\(....\).*/\1/" | wc -l`
+CHECKOBSOLETE=`fgrep deleting /data/dbs/pdb/$RSYNCLOG | awk '{print $2}' | wc -l`
+PDBLIST=$WORKDIR/input/pdb_all.list
+OBSOLETE=$WORKDIR/input/obsolete.list
+MAXJOBS=`grep -v "^#" $PDBLIST | wc -l`
+OBS=`grep -v "^#" $OBSOLETE | wc -l`
+echo $CHECKNEW
+echo $ONLYNEW
+echo $CHECKOBSOLETE
+echo $MAXJOBS
+echo $OBS
+echo $RSYNCLOG
+python /home/eppicweb/bin/eppic_stat_2_1_0.py eppic_$UNIPROT_VERSION $MAXJOBS $ONLYNEW $OBS $UNIPROT_VERSION $RSYNCLOG
+to="eppic@systemsx.ch"
+subject="EPPIC top-up report"
+body="Please see the attachment"
+declare -a attachments
+attachments=( "/home/eppicweb/topup/statistics.html" )
+declare -a attargs
+for att in "${attachments[@]}";do
+	attargs+=("-a" "$att" )
+done
+mail -s "$subject" "${attargs[@]}" "$to" <<< "$body"
+

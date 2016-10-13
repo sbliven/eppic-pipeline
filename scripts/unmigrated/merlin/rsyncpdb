@@ -1,0 +1,30 @@
+#!/bin/sh
+
+#############################################################
+#     EXECUTE STEP (C) OF PRECOMPUTE-PIPELINE OF EPPIC      #
+#      (to be run on merlin)                                #
+#############################################################
+
+# SET Inputs Here (CHECK Before Executing)
+SOURCE_SERVER=eppicweb@eppic01
+SOURCE_MMCIF_DIR=/data/dbs/pdb/data/structures/all/mmCIF/
+DEST_MMCIF_DIR=/gpfs/home/capitani/data/pdb/data/structures/all/mmCIF/
+CURRENT_DIR=`pwd`
+
+
+# Setting Paths
+DATE=`date +%F`
+SYNC_LOGFILE=$CURRENT_DIR/PDB-sync_${DATE}.log
+PDB_LIST=$CURRENT_DIR/resources/all-pdb-id.list
+
+
+##################################################################
+# C1) Sync PDB Files
+#-----------------------------------------------------------------
+# rsync from source host server to local directory
+# uses the option -L which gets the content of soft linked files
+# prints the log file with todays date
+
+#echo "Syncing MMCIF Files.. "
+rsync -r -v -L -t --rsh=ssh --delete $SOURCE_SERVER:$SOURCE_MMCIF_DIR $DEST_MMCIF_DIR > $SYNC_LOGFILE || exit 1
+#------------------------------------

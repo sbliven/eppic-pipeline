@@ -1,0 +1,1 @@
+/gpfs/home/capitani/eppic-pipeline/src/EPPICpipeline/transfer_chunks.sh

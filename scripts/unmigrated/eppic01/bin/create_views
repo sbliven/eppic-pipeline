@@ -1,0 +1,171 @@
+#!/bin/bash
+db=$1
+highres="eppic_view_2013_08"
+full="eppic_view_2013_08_full"
+mysql <<EOF
+use $db;
+DROP FUNCTION IF EXISTS get_homologs;
+DELIMITER $$
+CREATE FUNCTION get_homologs(pdbuid INT,chain VARCHAR(255)) RETURNS INT(12)
+BEGIN
+DECLARE x INT(12);
+SET x=(SELECT numHomologs 
+FROM $old.HomologsInfoItem 
+WHERE pdbScoreItem_uid=pdbuid 
+AND chains LIKE BINARY CONCAT("%",chain,"%"));
+RETURN x;
+END$$
+DELIMITER ;
+DROP FUNCTION IF EXISTS get_idcutoff;
+DELIMITER $$
+CREATE FUNCTION get_idcutoff(pdbuid INT,chain VARCHAR(255)) 
+RETURNS DOUBLE
+BEGIN
+DECLARE x DOUBLE;
+SET x=(SELECT idCutoffUsed 
+FROM $old.HomologsInfoItem 
+WHERE pdbScoreItem_uid=pdbuid 
+AND chains LIKE BINARY CONCAT("%",chain,"%"));
+RETURN x;
+END$$
+DELIMITER ;
+DROP FUNCTION IF EXISTS core70;
+DELIMITER $$
+CREATE FUNCTION core70(if_uid INT,chain INT) RETURNS INT(12)
+BEGIN
+DECLARE x INT(12);
+SET x=(SELECT count(*) 
+FROM InterfaceResidue
+WHERE interfaceItem_uid=if_uid
+AND structure=chain AND assignment=2);
+RETURN x;
+END$$
+DELIMITER ;
+DROP VIEW IF EXISTS $full;
+CREATE VIEW $full as
+SELECT
+p.pdbName pdb,
+i.chain1 chain1,
+get_homologs(p.uid,i.chain1) homologs1,
+get_idcutoff(p.uid,i.chain1) idcutoff1,
+i.size1 size1,
+i.chain2 chain2,
+get_homologs(p.uid,i.chain2) homologs2,
+get_idcutoff(p.uid,i.chain2) idcutoff2,
+i.size2 size2,
+i.area area,
+p.resolution,
+p.spaceGroup spaceGroup,
+i.operator operator,
+i.operatorType operatorType,
+i.isInfinite isInfinite,
+s.callName outcome,
+s.method method,
+s.unweightedCore1Scores core1,
+s.unweightedCore2Scores core2,
+s.unweightedRim1Scores rim1,
+s.unweightedRim2Scores rim2,
+s.unweightedRatio1Scores ratio1,
+s.unweightedRatio2Scores ratio2,
+s.unweightedFinalScores aver,
+i.finalCallName final
+FROM PdbScore AS p 
+INNER JOIN Job AS j 
+ON j.uid=p.jobItem_uid
+INNER JOIN Interface AS i
+ON p.uid=i.pdbScoreItem_uid
+INNER JOIN InterfaceScore AS s
+ON s.interfaceItem_uid=i.uid
+WHERE length(j.jobId)=4;
+DROP VIEW IF EXISTS $highres;
+CREATE VIEW $highres as
+SELECT
+p.pdbName pdb,
+i.chain1 chain1,
+get_homologs(p.uid,i.chain1) homologs1,
+get_idcutoff(p.uid,i.chain1) idcutoff1,
+i.size1 size1,
+i.chain2 chain2,
+get_homologs(p.uid,i.chain2) homologs2,
+get_idcutoff(p.uid,i.chain2) idcutoff2,
+i.size2 size2,
+i.area area,
+p.resolution,
+i.operator operator,
+p.spaceGroup spaceGroup,
+i.operatorType operatorType,
+i.isInfinite isInfinite,
+s.callName outcome,
+s.method method,
+s.unweightedCore1Scores core1,
+s.unweightedCore2Scores core2,
+s.unweightedRim1Scores rim1,
+s.unweightedRim2Scores rim2,
+s.unweightedRatio1Scores ratio1,
+s.unweightedRatio2Scores ratio2,
+s.unweightedFinalScores aver,
+i.finalCallName final
+FROM PdbScore AS p 
+INNER JOIN Job as j
+ON j.uid=p.jobItem_uid
+INNER JOIN Interface AS i
+ON p.uid=i.pdbScoreItem_uid
+INNER JOIN InterfaceScore AS s
+ON s.interfaceItem_uid=i.uid
+WHERE length(j.jobId)=4
+AND j.status="Finished" 
+AND p.expMethod="X-RAY DIFFRACTION" 
+AND p.resolution<2.5 and 
+s.unweightedRatio1Scores<100 and 
+s.unweightedRatio2Scores<100 and 
+s.unweightedRatio1Scores>-100 and 
+s.unweightedRatio2Scores>-100;
+DROP FUNCTION IF EXISTS get_pred;
+DELIMITER $$
+CREATE FUNCTION get_pred(p VARCHAR(255),c1 VARCHAR(1),c2 VARCHAR(1),m VARCHAR(15),a DOUBLE) 
+RETURNS VARCHAR(6)
+BEGIN
+DECLARE res VARCHAR(6);
+SET res=(SELECT outcome 
+FROM $full
+WHERE pdb=p
+AND chain1=c1
+AND chain2=c2
+AND method=m
+AND area=a);
+RETURN res;
+END$$
+DELIMITER ;
+DROP FUNCTION IF EXISTS get_final;
+DELIMITER $$
+CREATE FUNCTION get_final(p VARCHAR(255),a DOUBLE) 
+RETURNS VARCHAR(6)
+BEGIN
+DECLARE res VARCHAR(6);
+SET res=(SELECT final
+FROM $full
+WHERE pdb=p
+AND area=a
+group by pdb,area);
+RETURN res;
+END$$
+DELIMITER ;
+DROP PROCEDURE IF EXISTS eppicresult;
+DELIMITER $$
+CREATE PROCEDURE eppicresult(IN p VARCHAR(255))
+BEGIN
+select 
+pdb,
+chain1,
+chain2,
+area,
+size1,
+size2,
+get_pred(pdb,chain1,chain2,"Geometry",area) Geometry,
+get_pred(pdb,chain1,chain2,"Entropy",area) CoreRim,
+get_pred(pdb,chain1,chain2,"Z-scores",area) CoreSurface,
+get_final(pdb,area) Final
+from $full where pdb=p group by pdb,area order by area desc;
+END$$
+DELIMITER ;
+EOF
