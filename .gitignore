@@ -54,3 +54,8 @@ docs/_build/
 # PyBuilder
 target/
 credentials.conf
+
+*.swp
+*.swo
+*.pyc
+
