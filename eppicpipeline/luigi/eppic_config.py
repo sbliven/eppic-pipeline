@@ -1,7 +1,8 @@
 import luigi
 
 import luigi.configuration
-luigi.configuration.LuigiConfigParser.add_config_path("credentials.cfg")
+luigi.configuration.LuigiConfigParser.add_config_path("config/credentials.cfg")
+luigi.configuration.LuigiConfigParser.add_config_path("config/luigi.cfg")
 
 class EppicConfig(luigi.Config):
     # Master run variable, used for generating other paths
@@ -16,4 +17,3 @@ class EppicConfig(luigi.Config):
     eppic_source_dir = luigi.Parameter(description="Path to eppic source directory")
     eppic_version = luigi.Parameter(default="3.0-SNAPSHOT",
             description="Eppic version")
-
