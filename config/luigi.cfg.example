@@ -1,0 +1,9 @@
+# Example luigi.cfg file
+# Copy to luigi.cfg before modifying.
+
+[EppicConfig]
+run_date=2016_05
+eppic_source_dir=/home/spencer/dev/biojava/eppic
+eppic_version=3.0-SNAPSHOT
+
+#[EppicCli]

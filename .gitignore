@@ -53,3 +53,9 @@ docs/_build/
 
 # PyBuilder
 target/
+scripts/eppic01
+scripts/pc11467
+
+# Installation-specific files
+config/credentials.cfg
+config/luigi.cfg
