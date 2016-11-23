@@ -1,9 +1,62 @@
-# Example luigi.cfg file
-# Copy to luigi.cfg before modifying.
+# Example eppicpipeline config file
+# Copy to luigi.cfg before modifying!
 
+# Include variables in single brackets (only within the EppicConfig section)
+# This works by passing all values through python's str.format()
+# It is done recursively, so make sure that there are no cycles!
 [EppicConfig]
-run_date=2016_05
-eppic_source_dir=/home/spencer/dev/biojava/eppic
-eppic_version=3.0-SNAPSHOT
 
-#[EppicCli]
+#################################
+#### Run-specific variables #####
+#################################
+# These need to be updated before every run
+
+## Run-specific variables
+
+# Uniprot Date. This is used as the basis for the database name and many paths.
+db=2016_09
+
+# Mysql database names
+#uniprot_db=uniprot_{db}
+eppic_db=eppic3_{db}_test
+
+#################################
+#### Host-specific variables ####
+#################################
+# These should be specific to each host
+
+# Mysql host (default 127.0.0.1)
+# Credentials must be defined in credentials.conf
+#mysql_host=127.0.0.1
+
+# EPPIC output files
+wui_files=/data/spencer/eppic/wui/files3_{db}_test
+
+# EPPIC source directory
+eppic_source_dir=/home/spencer/dev/biojava/eppic
+
+# Jetty Location
+jetty_base=/home/spencer/dev/eppic-base
+
+blast_db_dir = /nfs/data/dbs/uniprot/uniprot_15.11
+
+blast_cache_dir = /nfs/data/dbs/blast_cache/uniprot_2015_03
+## External Dependencies
+
+blastclust = /nfs/data/software/packages/blast-2.2.18/bin/blastclust
+blast_data = /nfs/data/software/packages/blast-2.2.18/data
+blastp = /nfs/data/software/packages/ncbi-blast-2.2.31+/bin/blastp
+clustalo = /nfs/data/software/bin/clustalo
+pymol = /afs/psi.ch/project/strucbiol/xsoft/pymol-v1.8.0.6_64/pymol
+graphviz = /usr/bin/dot
+
+#################################
+######## Global variables #######
+#################################
+# Relative paths that should be the same on all hosts
+# These can generally be left at the default.
+
+# JAR files
+#eppic_version=3.0-SNAPSHOT
+#eppic_cli_jar={eppic_source}/eppic-cli/target/uber-eppic-cli-{eppic_version}.jar
+#eppic_db_jar={eppic_source}/eppic-dbtools/target/uber-eppic-dbtools-{eppic_version}.jar
