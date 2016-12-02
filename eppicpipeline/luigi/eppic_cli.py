@@ -18,7 +18,7 @@ class EppicCli(luigi.Task):
         with self.output().open('w') as out:
             out.write("Jar={}\n".format(self.jar))
 
-class CreateEppicConf(luigi.Task):
+class CreateEppicConfig(luigi.Task):
     eppic_conf_file = luigi.Parameter(default="eppic_{}.conf".format(config.db))
 
     def output(self):

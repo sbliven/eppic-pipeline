@@ -29,7 +29,7 @@ class EppicConfig(luigi.Config):
     blast_cache_dir = Parameter(description="Path to Blast cache")
     local_cif_dir = Parameter(description="Local PDB file storage",
         default=None)
-    sifts_file = Parameter(description="Path to SIFT file",
+    sifts_file = Parameter(description="Path to SIFTS file",
         default="{blast_db_dir}/pdb_chain_uniprot.lst")
 
     blastclust = Parameter(description="BLASTCLUST executable")
