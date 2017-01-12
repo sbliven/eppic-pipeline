@@ -60,3 +60,13 @@ graphviz = /usr/bin/dot
 #eppic_version=3.0-SNAPSHOT
 #eppic_cli_jar={eppic_source}/eppic-cli/target/uber-eppic-cli-{eppic_version}.jar
 #eppic_db_jar={eppic_source}/eppic-dbtools/target/uber-eppic-dbtools-{eppic_version}.jar
+
+
+
+[scheduler]
+state_path = /data/spencer/eppic/luigid/state.pickle
+[core]
+scheduler_host = localhost
+scheduler_port = 8090
+[CustomSGEJobTask]
+job_format = 'source activate luigi && python {0} "{1}" "{2}"'

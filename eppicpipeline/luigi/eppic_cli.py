@@ -3,6 +3,7 @@ import eppic_config
 from pkg_resources import resource_string#, resource_stream, resource_listdir
 import pybars as hb
 import subprocess
+from sgetask import CustomSGEJobTask
 
 config = eppic_config.EppicConfig()
 
@@ -48,6 +49,7 @@ class EppicCli(luigi.Task):
         if log is not None:
             with self.output()["log"].open('w') as out:
                 out.write("CMD: "+" ".join(cmd))
+                out.flush()
                 return subprocess.call(cmd,stdout=out,stderr=subprocess.STDOUT)
         else:
             return subprocess.call(cmd)
@@ -73,6 +75,8 @@ class CreateEppicConfig(luigi.Task):
             else:
                 out.write(confstr)
 
+class SGEEppicCli(CustomSGEJobTask,EppicCli):
+    pass
 
 
 class EppicCliTest(luigi.Task):
