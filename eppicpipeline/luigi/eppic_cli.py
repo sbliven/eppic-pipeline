@@ -7,6 +7,13 @@ from sgetask import CustomSGEJobTask
 
 config = eppic_config.EppicConfig()
 
+class IncompleteException(Exception): pass
+
+class ExternalFile(luigi.ExternalTask):
+    filename = luigi.Parameter()
+    def output(self):
+        return luigi.LocalTarget(self.filename)
+
 class EppicCli(luigi.Task):
     #input; required
     pdb = luigi.Parameter()
@@ -14,11 +21,15 @@ class EppicCli(luigi.Task):
         config.wui_files)
     )
     log = luigi.Parameter(default=None)
-    jar = luigi.Parameter(default="{}/eppic-cli/target/uber-eppic-cli-{}.jar".format(
-        config.eppic_source_dir, config.eppic_version))
+    jar = luigi.Parameter(default=config.eppic_cli_jar)
+    java = luigi.Parameter(default=config.java)
 
     def requires(self):
-        return CreateEppicConfig()
+        return {
+                "conf":CreateEppicConfig(), 
+                "jar":ExternalFile(filename=self.jar),
+                "java":ExternalFile(filename=self.java),
+                }
 
     def outputdir(self):
         return str(self.out).format(mid2=self.pdb[1:3],pdb=self.pdb)
@@ -30,10 +41,10 @@ class EppicCli(luigi.Task):
             }
 
     def run(self):
-        conf = self.input()
+        conf = self.input()["conf"]
         log = self.output()["log"]
 
-        cmd = ["java",
+        cmd = [self.java,
             "-Xmx3g","-Xmn1g",
             "-jar",str(self.jar),
             "-i", str(self.pdb),
@@ -46,13 +57,18 @@ class EppicCli(luigi.Task):
             "-P", #assembly diagrams
             "-p", #interface coordinates
         ]
+        rtn = -1
         if log is not None:
             with self.output()["log"].open('w') as out:
                 out.write("CMD: "+" ".join(cmd))
                 out.flush()
-                return subprocess.call(cmd,stdout=out,stderr=subprocess.STDOUT)
+                rtn = subprocess.call(cmd,stdout=out,stderr=subprocess.STDOUT)
         else:
-            return subprocess.call(cmd)
+            rtn = subprocess.call(cmd)
+        if rtn > 0:
+            raise IncompleteException("Non-zero return value (%d) from %s"%(rtn," ".join(cmd)))
+        if not self.complete():
+            raise IncompleteException("Some outputs were not generated")
 
 
 class CreateEppicConfig(luigi.Task):
@@ -78,6 +94,12 @@ class CreateEppicConfig(luigi.Task):
 class SGEEppicCli(CustomSGEJobTask,EppicCli):
     pass
 
+class Main(luigi.Task):
+    def requires(self):
+        return SGEEppicCli()
+
+    def run(self):
+        print("######## Main #########  inputs=%s"%self.input())
 
 class EppicCliTest(luigi.Task):
     jar = luigi.Parameter(default="{}/eppic-cli/target/uber-eppic-cli-{}.jar".format(config.eppic_source_dir, config.eppic_version))

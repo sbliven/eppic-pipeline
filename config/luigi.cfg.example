@@ -30,17 +30,32 @@ eppic_db=eppic3_{db}_test
 #mysql_host=127.0.0.1
 
 # EPPIC output files
-wui_files=/data/spencer/eppic/wui/files3_{db}_test
+wui_files=./wui/files3_{db}_test
+
+
+## Vars for running EPPIC
 
 # EPPIC source directory
-eppic_source_dir=/home/spencer/dev/biojava/eppic
+# May be omitted if all JAR files below are specified
+eppic_source_dir=./eppic-src
 
+#
+blast_db_dir = ./uniprot/uniprot_15.11
+
+blast_cache_dir = ./blast_cache/uniprot_2015_03
+
+# Local PDB cache
+#local_cif_dir = ./pdb/data/structures/all/mmCIF
+
+# Path to SIFTS file
+#sifts_file={blast_db_dir}/pdb_chain_uniprot.lst
+
+
+## Vars for the WUI
 # Jetty Location
-jetty_base=/home/spencer/dev/eppic-base
+#jetty_base=/home/spencer/dev/eppic-base
 
-blast_db_dir = /nfs/data/dbs/uniprot/uniprot_15.11
 
-blast_cache_dir = /nfs/data/dbs/blast_cache/uniprot_2015_03
 ## External Dependencies
 
 blastclust = /nfs/data/software/packages/blast-2.2.18/bin/blastclust
@@ -68,5 +83,9 @@ state_path = /data/spencer/eppic/luigid/state.pickle
 [core]
 scheduler_host = localhost
 scheduler_port = 8090
-[CustomSGEJobTask]
-job_format = 'source activate luigi && python {0} "{1}" "{2}"'
+[SGEEppicCli]
+# Merlin settings
+#job_format = source activate luigi && python {0} "{1}" "{2}"
+#shared_tmp_dir = /scratch/bliven_s/luigi_tmp
+#no_tarball = True
+

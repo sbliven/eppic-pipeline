@@ -15,7 +15,7 @@ class EppicConfig(luigi.Config):
     uniprot_db = Parameter(description="Uniprot database name",
         default="uniprot_{db}")
 
-    eppic_source_dir = Parameter(description="Eppic source directory")
+    eppic_source_dir = Parameter(description="Eppic source directory",default=None)
     wui_files = Parameter(description="EPPIC output files")
 
     eppic_version = Parameter(description="Eppic jar version",
@@ -32,6 +32,7 @@ class EppicConfig(luigi.Config):
     sifts_file = Parameter(description="Path to SIFTS file",
         default="{blast_db_dir}/pdb_chain_uniprot.lst")
 
+    java = Parameter(description="Java 8 VM",default="java")
     blastclust = Parameter(description="BLASTCLUST executable")
     blast_data = Parameter(description="BLAST data files")
     blastp = Parameter(description="BLASTP executable")
