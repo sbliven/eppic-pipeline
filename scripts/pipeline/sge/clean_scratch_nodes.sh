@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-# Template for EPPIC scripts to include configuration files
+# Script to clean the Merlin scratch nodes
+# 
+# 20160406
 
 # Get the base directory of the argument.
 # Can resolve single symlinks if readlink is installed
@@ -9,14 +11,18 @@ function scriptdir {
     pwd
 }
 # Bootstrap locating config directory
-: ${PIPELINE_ROOT:=$(scriptdir "$(scriptdir "$0")/../../.")}
+: "${PIPELINE_ROOT:=$(scriptdir "$(scriptdir "$0")/../../.")}"
 
 # load config variables and passwords
 source "${PIPELINE_ROOT}/config/credentials.conf" || exit
 source "${PIPELINE_ROOT}/config/pipeline.conf" || exit
 
 # Required parameters
-: ${EPPIC_DB:?Not configured}
+: ${SCRATCH_UNIPROT:?Not configured}
+: ${HOSTS_LIST}:?Not configured}
 
 
+echo "Removing content of "${SCRATCH_UNIPROT}" directories on the merlinc nodes"
+
+"${PIPELINE_ROOT}/scripts/pipeline/sge/rm_folder_nodes.sh" -f "${SCRATCH_UNIPROT}" -l "${HOSTS_LIST}"
 

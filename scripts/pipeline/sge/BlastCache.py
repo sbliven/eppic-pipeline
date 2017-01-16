@@ -11,8 +11,8 @@ from threading import Thread
 
 class BlastCache:
     
-    def __init__(self,wd):
-        self.uniprot='uniprot_2015_xx'
+    def __init__(self,wd,uniprot):
+        self.uniprot=uniprot
         self.nodes=["merlinc%02d"%(i) for i in range(1,31)]
         self.userName=getoutput('whoami')
         self.workDir=wd
@@ -260,9 +260,10 @@ class myThread(Thread):
                 
         
 if __name__=="__main__":
-    if len(sys.argv)==2:
+    if len(sys.argv)==3:
         workdir=sys.argv[1]
-        p=BlastCache(workdir)
+        uniprot=sys.argv[2]
+        p=BlastCache(workdir,uniprot)
         p.runAll()
     else:
-        print "Usage: python %s <path to working dir>"%(sys.argv[0])
+        print "Usage: python %s <path to working dir> <uniprot version>"%(sys.argv[0])
