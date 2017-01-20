@@ -62,3 +62,9 @@ config/luigi.cfg
 
 # intellij files
 .idea/
+
+# editors
+.*.swp
+.*~
+.env
+
