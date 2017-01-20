@@ -5,7 +5,10 @@ import pybars as hb
 import subprocess
 from sgetask import CustomSGEJobTask
 from luigi.util import inherits,requires
+import logging
+import os
 
+logger = logging.getLogger('luigi-interface')
 #config = EppicConfig()
 
 class IncompleteException(Exception): pass
@@ -26,9 +29,8 @@ class EppicCli(luigi.Task):
     java = luigi.Parameter(default=EppicConfig().java)
 
     def requires(self): return {
-                "conf":CreateEppicConfig(), 
+                "conf":CreateEppicConfig(),
                 "jar":ExternalFile(filename=self.jar),
-                "java":ExternalFile(filename=self.java),
                 }
 
     def outputdir(self):
@@ -98,9 +100,8 @@ class CreateEppicConfig(luigi.Task):
 class SGEEppicCli(CustomSGEJobTask):
     def requires(self):
         return {
-                "conf":CreateEppicConfig(), 
+                "conf":CreateEppicConfig(),
                 "jar":ExternalFile(filename=self.jar),
-                "java":ExternalFile(filename=self.java),
                 }
 
     def outputdir(self):
@@ -148,17 +149,46 @@ class SGEEppicCli(CustomSGEJobTask):
         if not self.complete():
             raise IncompleteException("Some outputs were not generated")
 
+class EppicList(luigi.WrapperTask):
+    input_list = luigi.Parameter(description="File containing a list of PDB IDs to run")
 
-@requires(SGEEppicCli)
-class Main(luigi.Task):
-    #def requires(self):
-    #    return SGEEppicCli()
+    wui_files = luigi.Parameter(description="EPPIC output files root dir", default=EppicConfig().wui_files)
+
+    def requires(self):
+        return ExternalFile(filename=self.input_list)
 
     def run(self):
-        i = self.input()
-        print("######## Main #########  inputs=%s"%i)
+        # Read inputs
+        with self.input().open() as inputs:
+            #Each pdb should be a single line
+            logger.info("Calculating dependencies from %s"%self.input().path)
+            deps =  [ self.makeTask(pdb.strip())
+                    for pdb in inputs
+                    if pdb.strip() and pdb[0]!='#' ]
+            yield deps
+            # Not clear if this is needed, since they should have failed already
+            for dep in deps:
+                if not dep.complete():
+                    raise IncompleteException("Error finishing %s(%s)"%(dep.__class__,dep.pdb))
+            logger.info("All %d entries calculated successfully"%len(deps))
 
-class EppicCliTest(luigi.Task):
-    jar = luigi.Parameter(default="{}/eppic-cli/target/uber-eppic-cli-{}.jar".format(EppicConfig().eppic_source_dir, EppicConfig().eppic_version))
-    def run(self):
-        print( "Jar={}\n".format(self.jar))
+    def makeTask(self,pdb):
+        logger.info("Creating EppicCli task for %s"%pdb)
+        outputdir = os.path.join(self.wui_files, "data", "divided", pdb[1:3], pdb)
+        logfile = os.path.join(outputdir,pdb+".out")
+        return EppicCli(pdb=pdb,
+                    out=outputdir,
+                    log=logfile)
+
+class SGEEppicList(EppicList):
+    def makeTask(self,pdb):
+        outputdir = os.path.join(self.wui_files, "data", "divided", pdb[1:3], pdb)
+        logfile = os.path.join(outputdir,pdb+".out")
+        SGEEppicCli(pdb=pdb,
+                    out=outputdir,
+                    log=logfile)
+
+
+@requires(EppicList)
+class Main(luigi.WrapperTask):
+    pass

@@ -23,9 +23,9 @@ class EppicConfig(luigi.Config):
     eppic_version = Parameter(description="Eppic jar version",
         default="3.0-SNAPSHOT")
     eppic_cli_jar = Parameter(description="Location of the EPPIC CLI jar",
-        default="{eppic_source}/eppic-cli/target/uber-eppic-cli-{eppic_version}.jar")
+        default="{eppic_source_dir}/eppic-cli/target/uber-eppic-cli-{eppic_version}.jar")
     eppic_db_jar = Parameter(description="Location of the EPPIC dbtools jar",
-        default="{eppic_source}/eppic-dbtools/target/uber-eppic-dbtools-{eppic_version}.jar")
+        default="{eppic_source_dir}/eppic-dbtools/target/uber-eppic-dbtools-{eppic_version}.jar")
 
     blast_db_dir = Parameter(description="Path to Blast results")
     blast_cache_dir = Parameter(description="Path to Blast cache")
