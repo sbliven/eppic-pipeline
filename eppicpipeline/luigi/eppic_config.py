@@ -15,9 +15,11 @@ class EppicConfig(luigi.Config):
     uniprot_db = Parameter(description="Uniprot database name",
         default="uniprot_{db}")
 
-    eppic_source_dir = Parameter(description="Eppic source directory",default=None)
     wui_files = Parameter(description="EPPIC output files")
 
+    # Either specify eppic_source_dir and eppic_version,
+    # or else give full paths to all jars
+    eppic_source_dir = Parameter(description="Eppic source directory",default=None)
     eppic_version = Parameter(description="Eppic jar version",
         default="3.0-SNAPSHOT")
     eppic_cli_jar = Parameter(description="Location of the EPPIC CLI jar",
