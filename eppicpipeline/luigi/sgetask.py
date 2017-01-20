@@ -23,6 +23,10 @@ class CustomSGEJobTask(SGEJobTask):
     job_format = luigi.Parameter(significant=False, default='python {0} "{1}" "{2}"',
             description="Command run by qsub. Formatted with the runner_path, the temp dir, and the current directory")
 
+    def run(self):
+        super(CustomSGEJobTask,self).run()
+        print("--- CustomSGEJobTask.run ---")
+
     def _run_job(self):
 
 
