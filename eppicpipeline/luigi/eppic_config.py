@@ -17,6 +17,9 @@ class EppicConfig(luigi.Config):
 
     wui_files = Parameter(description="EPPIC output files")
 
+    eppic_cli_conf_file = Parameter(description="Location for the eppic config file",
+            default=None)
+
     # Either specify eppic_source_dir and eppic_version,
     # or else give full paths to all jars
     eppic_source_dir = Parameter(description="Eppic source directory",default=None)

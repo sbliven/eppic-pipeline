@@ -35,6 +35,9 @@ wui_files=./wui/files3_{db}_test
 
 ## Vars for running EPPIC
 
+# Location of generated config file
+eppic_cli_conf_file = ./eppic_cli_{db}.conf
+
 # EPPIC source directory
 # May be omitted if all JAR files below are specified
 eppic_source_dir=./eppic-src
@@ -88,4 +91,3 @@ scheduler_port = 8090
 #job_format = source activate luigi && python {0} "{1}" "{2}"
 #shared_tmp_dir = /scratch/bliven_s/luigi_tmp
 #no_tarball = True
-

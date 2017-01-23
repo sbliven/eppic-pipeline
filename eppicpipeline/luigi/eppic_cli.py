@@ -24,7 +24,7 @@ class EppicCli(luigi.Task):
     out = luigi.Parameter(default="{}/data/divided/{{mid2}}/{{pdb}}".format(
         EppicConfig().wui_files)
     )
-    log = luigi.Parameter(default=None)
+    log = luigi.Parameter(default="") #Empty for no log
     jar = luigi.Parameter(default=EppicConfig().eppic_cli_jar)
     java = luigi.Parameter(default=EppicConfig().java)
 
@@ -36,17 +36,18 @@ class EppicCli(luigi.Task):
     def outputdir(self):
         return str(self.out).format(mid2=self.pdb[1:3],pdb=self.pdb)
     def output(self):
-        return {
-            "log":luigi.LocalTarget(self.log) if self.log is not None else None,
+        outs = {
             "dir":luigi.LocalTarget(self.outputdir()),
             "finished":luigi.LocalTarget("{}/finished".format(self.outputdir()) )
             }
+        if self.log:
+            outs["log"]=luigi.LocalTarget(self.log)
 
     def run(self):
         super(EppicCli,self).run()
-        print("--- EppicCli.run ---")
         conf = self.input()["conf"]
-        log = self.output()["log"]
+        outs = self.output()
+        log = outs.get("log") #None if not set
 
         cmd = [self.java,
             "-Xmx3g","-Xmn1g",
@@ -55,7 +56,7 @@ class EppicCli(luigi.Task):
             "-o", str(self.outputdir()),
             "-a","1", #threads
             "-w", #webui.dat
-            "-g",conf.open().name, #Is there a way to get the path without opening it?
+            "-g",conf.eppic_cli_conf_file,
             "-l", #pymol images
             #"-s", #entropy scores
             "-P", #assembly diagrams
@@ -76,10 +77,10 @@ class EppicCli(luigi.Task):
 
 
 class CreateEppicConfig(luigi.Task):
-    eppic_conf_file = luigi.Parameter(default="eppic_{}.conf".format(EppicConfig().db))
+    eppic_cli_conf_file = luigi.Parameter(default=EppicConfig().eppic_cli_conf_file)
 
     def output(self):
-        return luigi.LocalTarget(self.eppic_conf_file)
+        return luigi.LocalTarget(self.eppic_cli_conf_file)
 
     def run(self):
         conf = resource_string(__name__, 'eppic.conf.hbs')
@@ -114,14 +115,19 @@ class SGEEppicCli(CustomSGEJobTask):
             }
 
     def work(self):
-        super(EppicCli,self).run()
-        super(SGEEppicCli,self).run()
-        print("--- SGEEppicCli.work ---")
-        print("######SGEEppicCLI.work. job_format=%s"%self.job_format)
-        super(SGEEppicCli,self).run()
-        print("--- EppicCli.run ---")
         conf = self.input()["conf"]
-        log = self.output()["log"]
+        outs = self.output()
+        log = outs["log"]
+
+        dirname = os.path.dirname(self.outputdir())
+        if not os.path.exists(dirname):
+            try:
+                os.makedirs(dirname)
+            except OSError as err:
+                if not os.path.exists(dirname):
+                    raise err
+                else:
+                    logger.warn("Concurrent creation of %s",dirname)
 
         cmd = [self.java,
             "-Xmx3g","-Xmn1g",
@@ -138,7 +144,7 @@ class SGEEppicCli(CustomSGEJobTask):
         ]
         rtn = -1
         if log is not None:
-            with self.output()["log"].open('w') as out:
+            with log.open('w') as out:
                 out.write("CMD: "+" ".join(cmd))
                 out.flush()
                 rtn = subprocess.call(cmd,stdout=out,stderr=subprocess.STDOUT)
@@ -155,22 +161,21 @@ class EppicList(luigi.WrapperTask):
     wui_files = luigi.Parameter(description="EPPIC output files root dir", default=EppicConfig().wui_files)
 
     def requires(self):
-        return ExternalFile(filename=self.input_list)
+        # Require the input
+        infile = ExternalFile(filename=self.input_list)
+        yield infile
 
-    def run(self):
-        # Read inputs
-        with self.input().open() as inputs:
-            #Each pdb should be a single line
-            logger.info("Calculating dependencies from %s"%self.input().path)
-            deps =  [ self.makeTask(pdb.strip())
-                    for pdb in inputs
-                    if pdb.strip() and pdb[0]!='#' ]
-            yield deps
-            # Not clear if this is needed, since they should have failed already
-            for dep in deps:
-                if not dep.complete():
-                    raise IncompleteException("Error finishing %s(%s)"%(dep.__class__,dep.pdb))
-            logger.info("All %d entries calculated successfully"%len(deps))
+        # Dynamically generate more requirements from the input
+        if infile is not None and infile.complete():
+            with infile.output().open('r') as inputs:
+                #Each pdb should be a single line
+                logger.debug("Calculating dependencies from %s"%self.input_list)
+                deps =  [ self.makeTask(pdb.strip())
+                        for pdb in inputs
+                        if pdb.strip() and pdb[0]!='#' ]
+                for dep in deps:
+                    logger.debug("Requiring %s"%dep)#(dep.__class__.__name__,dep.pdb if dep is not None else None))
+                    yield dep
 
     def makeTask(self,pdb):
         logger.info("Creating EppicCli task for %s"%pdb)
@@ -180,15 +185,16 @@ class EppicList(luigi.WrapperTask):
                     out=outputdir,
                     log=logfile)
 
+@inherits(EppicList)
 class SGEEppicList(EppicList):
     def makeTask(self,pdb):
         outputdir = os.path.join(self.wui_files, "data", "divided", pdb[1:3], pdb)
         logfile = os.path.join(outputdir,pdb+".out")
-        SGEEppicCli(pdb=pdb,
+        return SGEEppicCli(pdb=pdb,
                     out=outputdir,
                     log=logfile)
 
 
-@requires(EppicList)
+@requires(SGEEppicList)
 class Main(luigi.WrapperTask):
     pass
