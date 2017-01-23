@@ -18,11 +18,11 @@ class EppicConfig(luigi.Config):
     wui_files = Parameter(description="EPPIC output files")
 
     eppic_cli_conf_file = Parameter(description="Location for the eppic config file",
-            default=None)
+            default="./eppic_cli_{db}.conf")
 
     # Either specify eppic_source_dir and eppic_version,
     # or else give full paths to all jars
-    eppic_source_dir = Parameter(description="Eppic source directory",default=None)
+    eppic_source_dir = Parameter(description="Eppic source directory",default=".")
     eppic_version = Parameter(description="Eppic jar version",
         default="3.0-SNAPSHOT")
     eppic_cli_jar = Parameter(description="Location of the EPPIC CLI jar",
@@ -33,7 +33,7 @@ class EppicConfig(luigi.Config):
     blast_db_dir = Parameter(description="Path to Blast results")
     blast_cache_dir = Parameter(description="Path to Blast cache")
     local_cif_dir = Parameter(description="Local PDB file storage",
-        default=None)
+        default="")
     sifts_file = Parameter(description="Path to SIFTS file",
         default="{blast_db_dir}/pdb_chain_uniprot.lst")
 
