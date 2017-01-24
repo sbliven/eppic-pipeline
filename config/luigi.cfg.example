@@ -82,10 +82,13 @@ graphviz = /usr/bin/dot
 
 
 [scheduler]
-state_path = /data/spencer/eppic/luigid/state.pickle
+#state_path = /data/spencer/eppic/luigid/state.pickle
+
 [core]
 scheduler_host = localhost
 scheduler_port = 8090
+#workers=8
+
 [SGEEppicCli]
 # Merlin settings
 #job_format = source activate luigi && python {0} "{1}" "{2}"
