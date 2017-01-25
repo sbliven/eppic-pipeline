@@ -20,6 +20,8 @@ db=2016_09
 #uniprot_db=uniprot_{db}
 eppic_db=eppic3_{db}_test
 
+# Mysql hostname
+#db_host=localhost
 #################################
 #### Host-specific variables ####
 #################################

@@ -13,6 +13,7 @@ setup(name="eppicpipeline",
     install_requires=[
         "luigi  == 2.3.3",
         "pybars >= 0.0.4",
+        "MySQL-python >= 1.2.5",
     ],
     packages=find_packages(),
     package_data={'': ['*.hbs']}

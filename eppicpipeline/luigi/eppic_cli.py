@@ -7,11 +7,11 @@ from sgetask import CustomSGEJobTask
 from luigi.util import inherits,requires
 import logging
 import os
+from eppicpipeline.luigi.util import IncompleteException
 
 logger = logging.getLogger('luigi-interface')
 #config = EppicConfig()
 
-class IncompleteException(Exception): pass
 
 class ExternalFile(luigi.ExternalTask):
     filename = luigi.Parameter()
@@ -42,6 +42,7 @@ class EppicCli(luigi.Task):
             }
         if self.log:
             outs["log"]=luigi.LocalTarget(self.log)
+        return outs
 
     def run(self):
         super(EppicCli,self).run()

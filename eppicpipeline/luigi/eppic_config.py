@@ -14,6 +14,7 @@ class EppicConfig(luigi.Config):
         default="eppic3_{db}")
     uniprot_db = Parameter(description="Uniprot database name",
         default="uniprot_{db}")
+    db_host= Parameter(description="MySQL hostname",default="localhost")
 
     wui_files = Parameter(description="EPPIC output files")
 
@@ -44,6 +45,14 @@ class EppicConfig(luigi.Config):
     clustalo = Parameter(description="CLUSTALO executable")
     pymol = Parameter(description="PyMol executable")
     graphviz = Parameter(description="Graphviz (dot) executable")
+
+
+    ## credentials.cfg
+    db_user= Parameter(description="MySQL user for standard actions",default="")
+    db_password= Parameter(description="MySQL password for standard actions",default="")
+    # MySQL user with create database permissions
+    db_root_user= Parameter(description="MySQL user for database creation",default="")
+    db_root_password= Parameter(description="MySQL password for database creation",default="")
 
     def __getattribute__(self,name):
         # Any string attributes (e.g. Parameters) get passed through format
