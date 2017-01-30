@@ -158,26 +158,6 @@ class UniprotUpload:
         else:
             self.writeLog("INFO: Uniprot download finished",0)
 
-    def downloadUniprotFasta(self):
-        """Step 13. Download the Uniprot Fasta file to downloadFolder"""
-        self.writeLog("INFO: UniProt FASTA file download started",0)
-        uniprotDownload=call(["wget","-q",self.urlUniref100fasta,"-P",self.downloadFolder])
-        if uniprotDownload:
-            self.writeLog("ERROR: Can't download uniref100.fasta.gz from %s"%(self.urlUniref100fasta),13)
-            raise Exception("Can't download uniref100.fasta.gz from %s"%(self.urlUniref100fasta))
-        else:
-            self.writeLog("INFO: UniProt FASTA file download finished",0)
-    def downloadUniprotReldate(self):
-        """Step 12. Download the release date"""
-        self.writeLog("INFO: UniProt reldate download started",0)
-        uniprotDownload=call(["wget","-q",self.urlUniprotReldate ,"-P",self.downloadFolder])
-        if uniprotDownload:
-            self.writeLog("ERROR: Can't download UniProt reldate from %s"%(self.urlUniprotReldate),12)
-            raise Exception("Can't download UniProt reldate from %s"%(self.urlUniprotReldate))
-        else:
-            self.writeLog("INFO: UniProt reldate file download finished",0)
-            #print "INFO: UniProt reldate file download finished"
-
     def downloadTaxonomy(self):
         """Step 3. Download taxonomy file to downloadFolder"""
         self.writeLog("INFO: Taxonomy download started",0)
@@ -187,16 +167,6 @@ class UniprotUpload:
             raise Exception("Can't download taxonomy-all.tab.gz from %s"%(self.urlTaxonomy))
         else:
             self.writeLog("INFO: Taxonomy download finished",0)
-
-    def unzipTaxonomy(self):
-        """Step 5. Unzip the taxonomy file"""
-        self.writeLog("INFO: unzipping taxonomy files",0)
-        unzipTaxonomy=call(["gunzip","%s/taxonomy-all.tab.gz"%(self.downloadFolder)])
-        if unzipTaxonomy:
-            self.writeLog("ERROR: Can't unzip taxonomy-all.tab.gz",5)
-            raise Exception("Can't unzip taxonomy-all.tab.gz")
-        else:
-            self.writeLog("INFO: unzipping taxonomy files finished",0)
 
     def downloadSifts(self):
         """Step 4. Download the SIFTS pdb:uniprot mapping"""
@@ -209,6 +179,16 @@ class UniprotUpload:
         else:
             self.writeLog("INFO: SIFTS mapping file download finished",0)
 
+    def unzipTaxonomy(self):
+        """Step 5. Unzip the taxonomy file"""
+        self.writeLog("INFO: unzipping taxonomy files",0)
+        unzipTaxonomy=call(["gunzip","%s/taxonomy-all.tab.gz"%(self.downloadFolder)])
+        if unzipTaxonomy:
+            self.writeLog("ERROR: Can't unzip taxonomy-all.tab.gz",5)
+            raise Exception("Can't unzip taxonomy-all.tab.gz")
+        else:
+            self.writeLog("INFO: unzipping taxonomy files finished",0)
+
     def parseUniprotXml(self):
         """Step 6. Parse the uniprot XML file into tab-delimited format"""
         self.writeLog("INFO: Creating UniProt tab files started",0)
@@ -220,9 +200,6 @@ class UniprotUpload:
         else:
             self.writeLog("INFO: Creating UniProt tab files finished",0)
 
-
-
-
     def createUniprotTables(self):
         """Step 7. Create Uniprot tables in the database"""
         self.writeLog("INFO: Creating UniProt tables started",0)
@@ -233,8 +210,6 @@ class UniprotUpload:
                 self.writeLog("ERROR: Can't create table %s in %s"%(name, self.uniprotDatabase),7)
                 raise Exception()
             self.writeLog("INFO: Table %s created"%(name),0)
-
-
 
     def uploadUniprotTable(self):
         """Step 8. Populate the uniprot database table from the parsed data"""
@@ -300,6 +275,27 @@ class UniprotUpload:
                 self.writeLog("ERROR: MySQL Error: %s" % str(e),11)
                 raise Exception()
         self.writeLog("INFO: Indexing uniprot table finished",0)
+
+    def downloadUniprotReldate(self):
+        """Step 12. Download the release date"""
+        self.writeLog("INFO: UniProt reldate download started",0)
+        uniprotDownload=call(["wget","-q",self.urlUniprotReldate ,"-P",self.downloadFolder])
+        if uniprotDownload:
+            self.writeLog("ERROR: Can't download UniProt reldate from %s"%(self.urlUniprotReldate),12)
+            raise Exception("Can't download UniProt reldate from %s"%(self.urlUniprotReldate))
+        else:
+            self.writeLog("INFO: UniProt reldate file download finished",0)
+            #print "INFO: UniProt reldate file download finished"
+
+    def downloadUniprotFasta(self):
+        """Step 13. Download the Uniprot Fasta file to downloadFolder"""
+        self.writeLog("INFO: UniProt FASTA file download started",0)
+        uniprotDownload=call(["wget","-q",self.urlUniref100fasta,"-P",self.downloadFolder])
+        if uniprotDownload:
+            self.writeLog("ERROR: Can't download uniref100.fasta.gz from %s"%(self.urlUniref100fasta),13)
+            raise Exception("Can't download uniref100.fasta.gz from %s"%(self.urlUniref100fasta))
+        else:
+            self.writeLog("INFO: UniProt FASTA file download finished",0)
 
     def createUniprotFiles(self):
         """Step 14. Expand the fasta files into uniprotDir and run `makeblastdb` to create the BLAST target database"""
