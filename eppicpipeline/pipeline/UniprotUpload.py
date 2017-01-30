@@ -19,7 +19,9 @@ class UniprotUpload:
 
     def __init__(self,outpath,version=None):
         self.uniprot= version if version else self.currentVersion()
-        self.userName=getoutput('whoami')
+        self.userName=getoutput('whoami') #remote user!
+        self.remoteHost="merlinl01.psi.ch"
+        self.remoteDir="" # home directory
         self.mysqluser='root'
         self.mysqlhost='mpc1153.psi.ch'
         self.mysqlpasswd=''
@@ -120,7 +122,7 @@ class UniprotUpload:
         self.cursor = self.cnx.cursor()
 
 
-    def checkMeomory(self):
+    def checkMemory(self):
         df = Popen(["df",self.outpath], stdout=PIPE)
         outdat=df.communicate()[0]
         device, size, used, available, percent, mountpoint = outdat.split("\n")[1].split()
@@ -132,6 +134,8 @@ class UniprotUpload:
             raise Exception("Insufficient storage")
 
     def createFolders(self):
+        """Step 1. Create outdir and outdir/download"""
+        #TODO use native python calls -SB
         makedir=call(["mkdir",self.outdir])
         if makedir:
             self.writeLog("ERROR: Can't create %s"%(self.outdir),1)
@@ -139,11 +143,13 @@ class UniprotUpload:
         else:
             mkdir=call(["mkdir","%s/download"%(self.outdir)])
             if mkdir:
+                #TODO use self.downloadFolder
                 self.writeLog("ERROR: Can't create %s/download"%(self.outdir),1)
                 raise Exception("Can't create %s/download"%(self.outdir))
             self.downloadFolder="%s/download"%(self.outdir)
 
     def downloadUniprot(self):
+        """Step 2. Download the Uniprot XML file to downloadFolder"""
         self.writeLog("INFO: Uniprot download started",0)
         uniprotDownload=call(["wget","-q",self.urlUniref100xml,"-P",self.downloadFolder])
         if uniprotDownload:
@@ -153,6 +159,7 @@ class UniprotUpload:
             self.writeLog("INFO: Uniprot download finished",0)
 
     def downloadUniprotFasta(self):
+        """Step 13. Download the Uniprot Fasta file to downloadFolder"""
         self.writeLog("INFO: UniProt FASTA file download started",0)
         uniprotDownload=call(["wget","-q",self.urlUniref100fasta,"-P",self.downloadFolder])
         if uniprotDownload:
@@ -160,7 +167,8 @@ class UniprotUpload:
             raise Exception("Can't download uniref100.fasta.gz from %s"%(self.urlUniref100fasta))
         else:
             self.writeLog("INFO: UniProt FASTA file download finished",0)
-    def downloadUniprotReldata(self):
+    def downloadUniprotReldate(self):
+        """Step 12. Download the release date"""
         self.writeLog("INFO: UniProt reldate download started",0)
         uniprotDownload=call(["wget","-q",self.urlUniprotReldate ,"-P",self.downloadFolder])
         if uniprotDownload:
@@ -171,6 +179,7 @@ class UniprotUpload:
             #print "INFO: UniProt reldate file download finished"
 
     def downloadTaxonomy(self):
+        """Step 3. Download taxonomy file to downloadFolder"""
         self.writeLog("INFO: Taxonomy download started",0)
         taxonomyDownload=call(["wget","-q",self.urlTaxonomy,"-O","%s/taxonomy-all.tab.gz"%(self.downloadFolder)])
         if taxonomyDownload:
@@ -180,6 +189,7 @@ class UniprotUpload:
             self.writeLog("INFO: Taxonomy download finished",0)
 
     def unzipTaxonomy(self):
+        """Step 5. Unzip the taxonomy file"""
         self.writeLog("INFO: unzipping taxonomy files",0)
         unzipTaxonomy=call(["gunzip","%s/taxonomy-all.tab.gz"%(self.downloadFolder)])
         if unzipTaxonomy:
@@ -189,6 +199,7 @@ class UniprotUpload:
             self.writeLog("INFO: unzipping taxonomy files finished",0)
 
     def downloadSifts(self):
+        """Step 4. Download the SIFTS pdb:uniprot mapping"""
         self.writeLog("INFO: SIFTS mapping file download started",0)
         #print "INFO: SIFTS mapping file download started"
         siftsDownload=call(["wget","-q",self.urlSifts,"-P",self.downloadFolder])
@@ -199,12 +210,13 @@ class UniprotUpload:
             self.writeLog("INFO: SIFTS mapping file download finished",0)
 
     def parseUniprotXml(self):
+        """Step 6. Parse the uniprot XML file into tab-delimited format"""
         self.writeLog("INFO: Creating UniProt tab files started",0)
         parseuniprot=call(["java","-cp",self.eppicjar,"owl.core.connections.UnirefXMLParser","%s/uniref100.xml.gz"%(self.downloadFolder),\
                           "%s/uniref100.tab"%(self.downloadFolder),"%s/uniref100.clustermembers.tab"%(self.downloadFolder)])
         if parseuniprot:
-            self.writeLog("ERROR: Can't create UniProt tab files;may be eppic.jar missing/too old",6)
-            raise Exception("Can't create UniProt tab files;may be eppic.jar missing/too old")
+            self.writeLog("ERROR: Can't create UniProt tab files;may be eppic.jar missing/too old (%s)"%self.eppicjar,6)
+            raise Exception("Can't create UniProt tab files;may be eppic.jar missing/too old (%s)"%self.eppicjar)
         else:
             self.writeLog("INFO: Creating UniProt tab files finished",0)
 
@@ -212,6 +224,7 @@ class UniprotUpload:
 
 
     def createUniprotTables(self):
+        """Step 7. Create Uniprot tables in the database"""
         self.writeLog("INFO: Creating UniProt tables started",0)
         for name, ddl in self.TABLES.iteritems():
             try:
@@ -224,6 +237,7 @@ class UniprotUpload:
 
 
     def uploadUniprotTable(self):
+        """Step 8. Populate the uniprot database table from the parsed data"""
         self.writeLog("INFO: Uploading data into uniprot table in %s started"%(self.uniprotDatabase),0)
         sqlcmd='''LOAD DATA LOCAL INFILE '%s/uniref100.tab' INTO TABLE uniprot'''%(self.downloadFolder)
         try:
@@ -239,6 +253,7 @@ class UniprotUpload:
         self.writeLog("INFO: Uploading uniprot table finished",0)
 
     def uploadUniprotClustersTable(self):
+        """Step 9. Populate the uniprot_clusters database table"""
         self.writeLog("INFO: Uploading data into uniprot_clusters in %s"%(self.uniprotDatabase),0)
         sqlcmd='''LOAD DATA LOCAL INFILE '%s/uniref100.clustermembers.tab' INTO TABLE uniprot_clusters'''%(self.downloadFolder)
         try:
@@ -254,6 +269,7 @@ class UniprotUpload:
         self.writeLog("INFO: Uploading uniprot_clusters finished",0)
 
     def uploadTaxonomyTable(self):
+        """Step 10. Populate the taxonomy database table"""
         self.writeLog("INFO: Uploading data into taxonomy table in %s"%(self.uniprotDatabase),0)
         sqlcmd='''LOAD DATA LOCAL INFILE '%s/taxonomy-all.tab' INTO TABLE taxonomy IGNORE 1 LINES'''%(self.downloadFolder)
         try:
@@ -269,9 +285,8 @@ class UniprotUpload:
         self.writeLog("INFO: Uploading taxonomy finished",0)
 
 
-
-
     def createUniprotIndex(self):
+        """Step 11. Create database index for uniprot table"""
         self.writeLog("INFO: Indexing uniprot table started",0)
         sqlcmd="CREATE INDEX UNIPROTID_IDX ON uniprot (uniprot_id)"
         try:
@@ -287,6 +302,7 @@ class UniprotUpload:
         self.writeLog("INFO: Indexing uniprot table finished",0)
 
     def createUniprotFiles(self):
+        """Step 14. Expand the fasta files into uniprotDir and run `makeblastdb` to create the BLAST target database"""
         self.writeLog("INFO: Creating UniProt files started",0)
         makedir=call(["mkdir",self.uniprotDir])
         if makedir:
@@ -310,15 +326,15 @@ class UniprotUpload:
                     else:
                         self.writeLog("INFO: UniProt files created",0)
 
-
-
     def createUniqueFasta(self):
+        """Step 15. Create list of unique uniprot IDs and split into batches of 30'000."""
         self.writeLog("INFO: Creating unique fasta sequences",0)
         makedir=call(["mkdir",self.fastaFolder])
         if makedir:
             self.writeLog("ERROR: Can't create %s"%(self.fastaFolder),15)
             raise Exception()
         else:
+            #TODO wrong way to do STDOUT redirection -SB
             uniquefasta=call(["java","-Xmx512m","-cp",self.eppicjar,"eppic.tools.WriteUniqueUniprots","-s",\
                               "%s/pdb_chain_uniprot.lst"%(self.downloadFolder),"-u",self.uniprotDatabase,"-o",\
                               "%s/"%(self.fastaFolder),">","%s/write-fasta.log"%(self.fastaFolder)])
@@ -335,6 +351,7 @@ class UniprotUpload:
 
 
     def prepareFileTransfer(self):
+        """Step 16. Consolidate files in clusterFolder"""
         self.writeLog("INFO: Preparing for file transfer",0)
         mkcdir=getstatusoutput("mkdir %s"%(self.clusterFolder))
         mvuniprot=call(["mv",self.uniprotDir,"%s/"%(self.clusterFolder)])
@@ -357,37 +374,14 @@ class UniprotUpload:
                 self.writeLog("INFO: End of local calculation",0)
 
     def transferFiles(self):
-        userName=""
+        """Step 17. Rsync output to remote host"""
         self.writeLog("INFO: Transfering files to Merlin cluster",0)
-        tfile=call(["rsync","az",self.clusterFolder,"%s@merlinl01.psi.ch:"%(self.userName)])
+        tfile=call(["rsync","az",self.clusterFolder,"%s@%s:%s"%(self.userName, self.remoteHost, self.remoteDir)])
         if tfile:
             self.writeLog("ERROR: Can't transfer files",17)
             raise Exception()
         else:
             self.writeLog("INFO: File transfer finished",17)
-
-    def runAll(self):
-        self.writeLog("INFO: EPPIC calculation started",0)
-        self.checkMeomory()
-        self.connectDatabase()
-
-        self.createFolders()
-        self.downloadUniprot() #download uniref100.xml.gz
-        self.downloadTaxonomy() # download taxonomy zip file
-        self.downloadSifts() # download Sifts mapping file
-        self.unzipTaxonomy() # unzipping taxonomy file
-        self.parseUniprotXml() # parse uniref100.xml.gz using eppic.jar to create .tab files for uploading into database
-        self.createUniprotTables() #create uniprot mysql table
-        self.uploadUniprotTable() # upload uniprot data into mysql table
-        self.uploadUniprotClustersTable() # upload uniprot_clusters data into mysql table
-        self.uploadTaxonomyTable() #upload taxonomy table
-        self.createUniprotIndex() # index the uniprot mysql table
-        self.downloadUniprotReldata() # download reldate.txt file
-        self.downloadUniprotFasta()# download uniprot fast file
-        self.createUniprotFiles()# parse and split the uniprot fast file
-        self.createUniqueFasta()# prepare unique sequence list for blast
-        self.prepareFileTransfer()# prepare files for merlin
-        self.transferFiles() # If you have passwd-free access to merlin then you can automaticallly transfer files
 
     def currentVersion(self):
         """Get the most recent uniprot Version"""
@@ -395,163 +389,58 @@ class UniprotUpload:
             self._version = urlopen(self.urlUniprotReldate).read().split("\n")[0].split(" ")[3]
         return self._version
 
-    def runAll2(self,n):
-        if n==1:
-            self.runAll()
-        elif n==2:
-            self.downloadUniprot() #download uniref100.xml.gz
-            self.downloadTaxonomy() # download taxonomy zip file
-            self.download() # download Sifts mapping file
-            self.unzipTaxonomy() # unzipping taxonomy file
-            self.parseUniprotXml() # parse uniref100.xml.gz using eppic.jar to create .tab files for uploading into database
-            self.createUniprotTables() #create uniprot mysql table
-            self.uploadUniprotTable() # upload uniprot data into mysql table
-            self.uploadUniprotClustersTable() # upload uniprot_clusters data into mysql table
-            self.uploadTaxonomyTable() #upload taxonomy table
-            self.createUniprotIndex() # index the uniprot mysql table
-            self.downloadUniprotReldata() # download reldate.txt file
-            self.downloadUniprotFasta()# download uniprot fast file
-            self.createUniprotFiles()# parse and split the uniprot fast file
-            self.createUniqueFasta()# prepare unique sequence list for blast
-            self.prepareFileTransfer()# prepare files for merlin
-            self.transferFiles() # If you have passwd-free access to merlin then you can automaticallly transfer files
-        elif n==3:
-            self.downloadTaxonomy() # download taxonomy zip file
-            self.downloadSifts() # download Sifts mapping file
-            self.unzipTaxonomy() # unzipping taxonomy file
-            self.parseUniprotXml() # parse uniref100.xml.gz using eppic.jar to create .tab files for uploading into database
-            self.createUniprotTables() #create uniprot mysql table
-            self.uploadUniprotTable() # upload uniprot data into mysql table
-            self.uploadUniprotClustersTable() # upload uniprot_clusters data into mysql table
-            self.uploadTaxonomyTable() #upload taxonomy table
-            self.createUniprotIndex() # index the uniprot mysql table
-            self.downloadUniprotReldata() # download reldate.txt file
-            self.downloadUniprotFasta()# download uniprot fast file
-            self.createUniprotFiles()# parse and split the uniprot fast file
-            self.createUniqueFasta()# prepare unique sequence list for blast
-            self.prepareFileTransfer()# prepare files for merlin
-            self.transferFiles() # If you have passwd-free access to merlin then you can automaticallly transfer files
-        elif n==4:
-            self.downloadSifts() # download Sifts mapping file
-            self.unzipTaxonomy() # unzipping taxonomy file
-            self.parseUniprotXml() # parse uniref100.xml.gz using eppic.jar to create .tab files for uploading into database
-            self.createUniprotTables() #create uniprot mysql table
-            self.uploadUniprotTable() # upload uniprot data into mysql table
-            self.uploadUniprotClustersTable() # upload uniprot_clusters data into mysql table
-            self.uploadTaxonomyTable() #upload taxonomy table
-            self.createUniprotIndex() # index the uniprot mysql table
-            self.downloadUniprotReldata() # download reldate.txt file
-            self.downloadUniprotFasta()# download uniprot fast file
-            self.createUniprotFiles()# parse and split the uniprot fast file
-            self.createUniqueFasta()# prepare unique sequence list for blast
-            self.prepareFileTransfer()# prepare files for merlin
-            self.transferFiles() # If you have passwd-free access to merlin then you can automaticallly transfer files
-        elif n==5:
-            self.unzipTaxonomy() # unzipping taxonomy file
-            self.parseUniprotXml() # parse uniref100.xml.gz using eppic.jar to create .tab files for uploading into database
-            self.createUniprotTables() #create uniprot mysql table
-            self.uploadUniprotTable() # upload uniprot data into mysql table
-            self.uploadUniprotClustersTable() # upload uniprot_clusters data into mysql table
-            self.uploadTaxonomyTable() #upload taxonomy table
-            self.createUniprotIndex() # index the uniprot mysql table
-            self.downloadUniprotReldata() # download reldate.txt file
-            self.downloadUniprotFasta()# download uniprot fast file
-            self.createUniprotFiles()# parse and split the uniprot fast file
-            self.createUniqueFasta()# prepare unique sequence list for blast
-            self.prepareFileTransfer()# prepare files for merlin
-            #self.transferFiles() # If you have passwd-free access to merlin then you can automaticallly transfer files
-        elif n==6:
-            self.parseUniprotXml() # parse uniref100.xml.gz using eppic.jar to create .tab files for uploading into database
-            self.createUniprotTables() #create uniprot mysql table
-            self.uploadUniprotTable() # upload uniprot data into mysql table
-            self.uploadUniprotClustersTable() # upload uniprot_clusters data into mysql table
-            self.uploadTaxonomyTable() #upload taxonomy table
-            self.createUniprotIndex() # index the uniprot mysql table
-            self.downloadUniprotReldata() # download reldate.txt file
-            self.downloadUniprotFasta()# download uniprot fast file
-            self.createUniprotFiles()# parse and split the uniprot fast file
-            self.createUniqueFasta()# prepare unique sequence list for blast
-            self.prepareFileTransfer()# prepare files for merlin
-            self.transferFiles() # If you have passwd-free access to merlin then you can automaticallly transfer files
-        elif n==7:
-            self.createUniprotTables() #create uniprot mysql table
-            self.uploadUniprotTable() # upload uniprot data into mysql table
-            self.uploadUniprotClustersTable() # upload uniprot_clusters data into mysql table
-            self.uploadTaxonomyTable() #upload taxonomy table
-            self.createUniprotIndex() # index the uniprot mysql table
-            self.downloadUniprotReldata() # download reldate.txt file
-            self.downloadUniprotFasta()# download uniprot fast file
-            self.createUniprotFiles()# parse and split the uniprot fast file
-            self.createUniqueFasta()# prepare unique sequence list for blast
-            self.prepareFileTransfer()# prepare files for merlin
-            self.transferFiles() # If you have passwd-free access to merlin then you can automaticallly transfer files
-        elif n==8:
-            self.uploadUniprotTable() # upload uniprot data into mysql table
-            self.uploadUniprotClustersTable() # upload uniprot_clusters data into mysql table
-            self.uploadTaxonomyTable() #upload taxonomy table
-            self.createUniprotIndex() # index the uniprot mysql table
-            self.downloadUniprotReldata() # download reldate.txt file
-            self.downloadUniprotFasta()# download uniprot fast file
-            self.createUniprotFiles()# parse and split the uniprot fast file
-            self.createUniqueFasta()# prepare unique sequence list for blast
-            self.prepareFileTransfer()# prepare files for merlin
-            self.transferFiles() # If you have passwd-free access to merlin then you can automaticallly transfer files
-        elif n==9:
-            self.uploadUniprotClustersTable() # upload uniprot_clusters data into mysql table
-            self.uploadTaxonomyTable() #upload taxonomy table
-            self.createUniprotIndex() # index the uniprot mysql table
-            self.downloadUniprotReldata() # download reldate.txt file
-            self.downloadUniprotFasta()# download uniprot fast file
-            self.createUniprotFiles()# parse and split the uniprot fast file
-            self.createUniqueFasta()# prepare unique sequence list for blast
-            self.prepareFileTransfer()# prepare files for merlin
-            self.transferFiles() # If you have passwd-free access to merlin then you can automaticallly transfer files
-        elif n==10:
-            self.uploadTaxonomyTable() #upload taxonomy table
-            self.createUniprotIndex() # index the uniprot mysql table
-            self.downloadUniprotReldata() # download reldate.txt file
-            self.downloadUniprotFasta()# download uniprot fast file
-            self.createUniprotFiles()# parse and split the uniprot fast file
-            self.createUniqueFasta()# prepare unique sequence list for blast
-            self.prepareFileTransfer()# prepare files for merlin
-            self.transferFiles() # If you have passwd-free access to merlin then you can automaticallly transfer files
-        elif n==11:
-            self.createUniprotIndex() # index the uniprot mysql table
-            self.downloadUniprotReldata() # download reldate.txt file
-            self.downloadUniprotFasta()# download uniprot fast file
-            self.createUniprotFiles()# parse and split the uniprot fast file
-            self.createUniqueFasta()# prepare unique sequence list for blast
-            self.prepareFileTransfer()# prepare files for merlin
-            self.transferFiles() # If you have passwd-free access to merlin then you can automaticallly transfer files
-        elif n==12:
-            self.downloadUniprotReldata() # download reldate.txt file
-            self.downloadUniprotFasta()# download uniprot fast file
-            self.createUniprotFiles()# parse and split the uniprot fast file
-            self.createUniqueFasta()# prepare unique sequence list for blast
-            self.prepareFileTransfer()# prepare files for merlin
-            self.transferFiles() # If you have passwd-free access to merlin then you can automaticallly transfer files
-        elif n==13:
-            self.downloadUniprotFasta()# download uniprot fast file
-            self.createUniprotFiles()# parse and split the uniprot fast file
-            self.createUniqueFasta()# prepare unique sequence list for blast
-            self.prepareFileTransfer()# prepare files for merlin
-            self.transferFiles() # If you have passwd-free access to merlin then you can automaticallly transfer files
-        elif n==14:
-            self.createUniprotFiles()# parse and split the uniprot fast file
-            self.createUniqueFasta()# prepare unique sequence list for blast
-            self.prepareFileTransfer()# prepare files for merlin
-            self.transferFiles() # If you have passwd-free access to merlin then you can automaticallly transfer files
-        elif n==15:
-            self.createUniqueFasta()# prepare unique sequence list for blast
-            self.prepareFileTransfer()# prepare files for merlin
-            self.transferFiles() # If you have passwd-free access to merlin then you can automaticallly transfer files
-        elif n==16:
-            self.prepareFileTransfer()# prepare files for merlin
-            self.transferFiles() # If you have passwd-free access to merlin then you can automaticallly transfer files
-        elif n==17:
-            self.transferFiles() # If you have passwd-free access to merlin then you can automaticallly transfer files
+    def runAll(self,checkpoint=0):
+        """Run all steps sequentially.
+
+        When errors occur, they print a checkpoint number in the log file.
+        This can be used to resume the script after fixing the error.
+
+        Arguments:
+            checkpoint (int): Step number to resume at
+        """
+
+        if checkpoint < 1 or 17 < checkpoint:
+            ValueError("Check point not in the list: Do manual debugging")
+
+        if checkpoint <= 1:
+            self.writeLog("INFO: EPPIC calculation started",0)
+            self.checkMemory()
+            self.connectDatabase()
+            self.createFolders()
         else:
-            print "Check point not in the list: Do manual debugging"
+            self.writeLog("INFO: Resuming calculation from step %d"%checkpoint)
+        if checkpoint <= 2:
+            self.downloadUniprot() #download uniref100.xml.gz
+        if checkpoint <= 3:
+            self.downloadTaxonomy() # download taxonomy zip file
+        if checkpoint <= 4:
+            self.downloadSifts() # download Sifts mapping file
+        if checkpoint <= 5:
+            self.unzipTaxonomy() # unzipping taxonomy file
+        if checkpoint <= 6:
+            self.parseUniprotXml() # parse uniref100.xml.gz using eppic.jar to create .tab files for uploading into database
+        if checkpoint <= 7:
+            self.createUniprotTables() #create uniprot mysql table
+        if checkpoint <= 8:
+            self.uploadUniprotTable() # upload uniprot data into mysql table
+        if checkpoint <= 9:
+            self.uploadUniprotClustersTable() # upload uniprot_clusters data into mysql table
+        if checkpoint <= 10:
+            self.uploadTaxonomyTable() #upload taxonomy table
+        if checkpoint <= 11:
+            self.createUniprotIndex() # index the uniprot mysql table
+        if checkpoint <= 12:
+            self.downloadUniprotReldate() # download reldate.txt file
+        if checkpoint <= 13:
+            self.downloadUniprotFasta()# download uniprot fast file
+        if checkpoint <= 14:
+            self.createUniprotFiles()# parse and split the uniprot fast file
+        if checkpoint <= 15:
+            self.createUniqueFasta()# prepare unique sequence list for blast
+        if checkpoint <= 16:
+            self.prepareFileTransfer()# prepare files for merlin
+        if checkpoint <= 17:
+            self.transferFiles() # If you have passwd-free access to merlin then you can automaticallly transfer files
 
 
 if __name__=="__main__":
