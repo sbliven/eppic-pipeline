@@ -18,6 +18,8 @@ class EppicConfig(luigi.Config):
 
     wui_files = Parameter(description="EPPIC output files")
 
+    uniprot_dir = Parameter(description="uniprot download directory",default="")
+
     eppic_cli_conf_file = Parameter(description="Location for the eppic config file",
             default="./eppic_cli_{db}.conf")
 

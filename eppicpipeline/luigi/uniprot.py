@@ -1,5 +1,5 @@
 import luigi
-from luigi import Task,Parameter,BooleanParameter,LocalTarget
+from luigi import Task,Parameter,BoolParameter,LocalTarget
 from eppic_config import EppicConfig
 import subprocess
 from luigi.util import inherits,requires
@@ -20,9 +20,9 @@ class UniprotUploadTask(Task):
     """
     #TODO default to the latest, and somehow pass the version to upstream tasks
     db = Parameter(description="Uniprot db date (e.g. 2017_01)", default=EppicConfig().db)
-    allow_old = BooleanParameter(description="Don't fail if the provided version is not the latest")
+    allow_old = BoolParameter(description="Don't fail if the provided version is not the latest")
 
-    workdir = Parameter(description="working directory")
+    uniprot_dir = Parameter(description="uniprot download directory",default=EppicConfig().uniprot_dir)
     jar = luigi.Parameter(default=EppicConfig().eppic_cli_jar)
     uniprot_db = Parameter(default=EppicConfig().uniprot_db)
 
@@ -30,7 +30,7 @@ class UniprotUploadTask(Task):
     mysql_user = Parameter(default=EppicConfig().db_root_user)
     mysql_password = Parameter(default=EppicConfig().db_root_password)
 
-    dont_remove_tmp_dir=BooleanParameter(description="In the case of errors, keep the temp directory around")
+    dont_remove_tmp_dir=BoolParameter(description="In the case of errors, keep the temp directory around")
     ## Definitions for database downloads
     urlSifts = Parameter(description="sifts URL",
             default="ftp://ftp.ebi.ac.uk/pub/databases/msd/sifts/text/pdb_chain_uniprot.lst") #main ftp
@@ -57,7 +57,7 @@ class UniprotUploadTask(Task):
 
     def output(self):
         return {
-            "workdir": LocalTarget(self.workdir),
+            "uniprot_dir": LocalTarget(self.uniprot_dir),
         }
     def run(self):
 
@@ -68,7 +68,7 @@ class UniprotUploadTask(Task):
         #mkdir /data/pipeline/eppic_${DATABASE_DATE}
         #python /usr/local/bin/UniprotUpload.py /data/pipeline/eppic_${DATABASE_DATE}
         outs = self.output()
-        workdir = outs["workdir"]
+        uniprot_dir = outs["uniprot_dir"]
 
         #Validate Parameters
         if not self.mysql_user:
@@ -77,14 +77,16 @@ class UniprotUploadTask(Task):
             raise ValueError("No Mysql Password")
         if not self.mysql_host:
             raise ValueError("No Mysql Host")
+        if not uniprot_dir:
+            raise ValueError("No uniprot_dir")
 
         logger.info("mysql -h %s -u %s"%(self.mysql_host,self.mysql_user))
 
         #Use temporary directory
-        #with workdir.temporary_path() as temp_path:
-        temp_path = tempfile.mkdtemp(prefix="UniprotUploadTask_",dir=os.path.dirname(self.workdir))
+        #with uniprot_dir.temporary_path() as temp_path:
+        temp_path = tempfile.mkdtemp(prefix="UniprotUploadTask_",dir=os.path.dirname(self.uniprot_dir))
         try:
-            logger.info("Using temp dir %s instead of %s"%(temp_path,self.workdir))
+            logger.info("Using temp dir %s instead of %s"%(temp_path,self.uniprot_dir))
 
             p = UniprotUpload( temp_path )
             # TODO finish parameterizing the UniprotUpload settings
@@ -96,7 +98,7 @@ class UniprotUploadTask(Task):
             p.runAll()
 
             # Move results into correct destination
-            shutil.move(temp_path,self.workdir)
+            shutil.move(temp_path,self.uniprot_dir)
         finally:
             # clean up temp_path if errors occured
             if not self.dont_remove_tmp_dir and os.path.exists(temp_path):

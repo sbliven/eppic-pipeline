@@ -1,6 +1,22 @@
 # eppic-pipeline
 
-## Running the CLI on an SGE cluster (e.g. Merlin)
+# Installation
+
+The EPPIC pipeline is composed primarily of a python package. This can be installed easily using the setup script. For development, it is recommended to install into a [virtualenv](https://pypi.python.org/pypi/virtualenv) environment to isolate any dependencies and reduce the need for root permissions. On the dev server this environment is activated with the command `workon luigi`, while the merlin cluster uses a slightly different command (see below).
+
+```
+python setup.py install
+```
+
+This command should install all dependencies from pypi. There are a few issues with scientific linux. The python_daemon package didn't compile for me, so it was compiled on an ubuntu machine and installed from the wheel (.whl) file.
+
+# Downloading uniprot
+
+```
+luigi --module eppicpipeline.luigi.uniprot Main
+```
+
+# Running the CLI on an SGE cluster (e.g. Merlin)
 
 On merlin, the easiest way to install all dependencies is to use a conda virtual environment.
 
