@@ -96,3 +96,8 @@ scheduler_port = 8090
 #job_format = source activate luigi && python {0} "{1}" "{2}"
 #shared_tmp_dir = /scratch/bliven_s/luigi_tmp
 #no_tarball = True
+#dont_remove_tmp_dir = True
+
+[UniprotUploadTask]
+# Keep uniprot intermediate directory, in case of errors
+#dont_remove_tmp_dir = True

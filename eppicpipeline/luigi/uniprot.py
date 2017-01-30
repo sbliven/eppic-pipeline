@@ -100,6 +100,7 @@ class UniprotUploadTask(Task):
         finally:
             # clean up temp_path if errors occured
             if not self.dont_remove_tmp_dir and os.path.exists(temp_path):
+                logger.info("Removing temp dir %s",temp_path)
                 shutil.rmtree(temp_path)
         # Check for completion
         if not self.complete():
