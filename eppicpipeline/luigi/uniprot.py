@@ -1,5 +1,5 @@
 import luigi
-from luigi import Task,Parameter,BoolParameter,LocalTarget
+from luigi import Task,Parameter,BoolParameter,LocalTarget,WrapperTask,ChoiceParameter
 from eppic_config import EppicConfig
 import subprocess
 from luigi.util import inherits,requires
@@ -35,6 +35,9 @@ class UniprotUploadTask(Task):
     remote_dir  = Parameter(description="Path to place results on remote host",default="")
 
     dont_remove_tmp_dir=BoolParameter(description="In the case of errors, keep the temp directory around")
+    overwrite_behavior = ChoiceParameter(description="Behavior in the case of an existing database",
+            choices=["IGNORE","DROP","ERROR"])
+
     ## Definitions for database downloads
     urlSifts = Parameter(description="sifts URL",
             default="ftp://ftp.ebi.ac.uk/pub/databases/msd/sifts/text/pdb_chain_uniprot.lst") #main ftp
@@ -62,6 +65,7 @@ class UniprotUploadTask(Task):
     def output(self):
         return {
             "uniprot_dir": LocalTarget(self.uniprot_dir),
+            "remote_dir": RemoteTarget(self.remote_dir,self.remote_host,username=self.remote_user),
             "uniprot_db": MySqlTarget(
                     host=self.mysql_host,
                     database=self.uniprot_db,
@@ -110,6 +114,7 @@ class UniprotUploadTask(Task):
                 p.userName = self.remote_user
             p.remoteHost = self.remote_host
             p.remoteDir = self.remoteDir
+            p.overwrite_behavior = self.overwrite_behavior
             p.runAll()
 
             # Move results into correct destination
@@ -132,6 +137,11 @@ class UniprotUploadTask(Task):
         """Get the most recent uniprot Version"""
         return urlopen(self.urlUniprotReldate).read().split("\n")[0].split(" ")[3]
 
-@requires(UniprotUploadTask)
-class Main(Task):
-    pass
+@inherits(UniprotUploadTask)
+class UniprotUploadStub(UniprotUploadTask):
+    def run(self):
+        raise IncompleteException("This stub implementation requires external population of the database")
+
+class Main(WrapperTask):
+    def requires(self):
+        return UniprotUploadTask()

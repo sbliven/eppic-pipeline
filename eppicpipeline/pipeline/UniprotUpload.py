@@ -35,6 +35,8 @@ class UniprotUpload:
         self.uniprotDir="%s/%s"%(self.outdir,self.uniprotDatabase)
         self.logfile=open("%s/uniprot_upload_%s.log"%(self.outpath,strftime("%d%m%Y",localtime())),'a')
         self.clusterFolder="%s/eppic_%s"%(self.outdir,self.uniprot)
+        #Behavior if the database already exists. Valid: ERROR, DROP, IGNORE
+        self.overwrite_behavior="ERROR"
     def writeLog(self,msg,checkpoint=0):
         t=strftime("%d-%m-%Y %H:%M:%S",localtime())
         self.logfile.write("%s\t%s\n"%(t,msg))
@@ -91,7 +93,7 @@ class UniprotUpload:
                           ")")
 
 
-    def connectDatabase(self,overwrite=False):
+    def connectDatabase(self):
         # Ignore subsequent calls
         if getattr(self,"cnx",None) is not None:
             return
@@ -109,11 +111,14 @@ class UniprotUpload:
         if chkflg:
             # exists
             self.writeLog("WARNING: Database %s already exists"%(self.uniprotDatabase),0)
-            if overwrite:
+            if self.overwrite_behavior == "DROP":
                 self.cursor.execute("DROP DATABASE %s"%(self.uniprotDatabase))
                 createdb=self.cursor.execute("CREATE DATABASE %s"%(self.uniprotDatabase))
                 self.writeLog("WARNING: %s database will be overwritten"%(self.uniprotDatabase),0)
-            else:
+            elif self.overwrite_behavior == "ERROR":
+                self.writeLog("ERROR: %s database already exists"%self.uniprotDatabase,0)
+                raise Exception("ERROR: Database already exists")
+            else: #"IGNORE"
                 self.writeLog("WARNING: Using existing %s database; This may create problems if tables already exist in the database"%(self.uniprotDatabase),0)
         else:
             # doesn't exist
@@ -193,7 +198,7 @@ class UniprotUpload:
     def parseUniprotXml(self):
         """Step 6. Parse the uniprot XML file into tab-delimited format"""
         self.writeLog("INFO: Creating UniProt tab files started",0)
-        parseuniprot=call(["java","-cp",self.eppicjar,"owl.core.connections.UnirefXMLParser","%s/uniref100.xml.gz"%(self.downloadFolder),\
+        parseuniprot=call(["java","-cp",self.eppicjar,"eppic.commons.sequence.UnirefXMLParser","%s/uniref100.xml.gz"%(self.downloadFolder),\
                           "%s/uniref100.tab"%(self.downloadFolder),"%s/uniref100.clustermembers.tab"%(self.downloadFolder)])
         if parseuniprot:
             self.writeLog("ERROR: Can't create UniProt tab files;may be eppic.jar missing/too old (%s)"%self.eppicjar,6)
