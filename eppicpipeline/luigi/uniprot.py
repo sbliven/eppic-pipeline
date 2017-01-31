@@ -62,6 +62,13 @@ class UniprotUploadTask(Task):
     def output(self):
         return {
             "uniprot_dir": LocalTarget(self.uniprot_dir),
+            "uniprot_db": MySqlTarget(
+                    host=self.mysql_host,
+                    database=self.uniprot_db,
+                    user=self.mysql_user,
+                    password=self.mysql_password,
+                    table="uniprot",
+                    update_id=self.uniprot_db)
         }
     def run(self):
 
@@ -107,6 +114,10 @@ class UniprotUploadTask(Task):
 
             # Move results into correct destination
             shutil.move(temp_path,self.uniprot_dir)
+
+            # Mark database as finished
+            outs["uniprot_db"].touch()
+
         finally:
             # clean up temp_path if errors occured
             if not self.dont_remove_tmp_dir and os.path.exists(temp_path):
