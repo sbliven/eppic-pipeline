@@ -4,7 +4,7 @@ Eppic computation pipeline script
 @author: baskaran_k
 '''
 
-
+#TODO replace commands (deprecated) with subprocess
 from commands import getstatusoutput,getoutput
 from subprocess import Popen,PIPE,call
 from string import atof
@@ -18,10 +18,11 @@ class ConnectionError(Exception): pass
 class UniprotUpload:
 
     def __init__(self,outpath,version=None):
+        #TODO add some or all to the constructor. Currently they get overriden by caller individually. -SB
         self.uniprot= version if version else self.currentVersion()
         self.userName=getoutput('whoami') #remote user!
         self.remoteHost="merlinl01.psi.ch"
-        self.remoteDir="" # home directory
+        self.remoteDir="" # empty=home directory
         self.mysqluser='root'
         self.mysqlhost='mpc1153.psi.ch'
         self.mysqlpasswd=''
@@ -34,7 +35,7 @@ class UniprotUpload:
         self.uniprotDir="%s/%s"%(self.outdir,self.uniprotDatabase)
         self.logfile=open("%s/uniprot_upload_%s.log"%(self.outpath,strftime("%d%m%Y",localtime())),'a')
         self.clusterFolder="%s/eppic_%s"%(self.outdir,self.uniprot)
-    def writeLog(self,msg,checkpoint):
+    def writeLog(self,msg,checkpoint=0):
         t=strftime("%d-%m-%Y %H:%M:%S",localtime())
         self.logfile.write("%s\t%s\n"%(t,msg))
         if checkpoint: self.logfile.write("Checkpoint=%d\n"%(checkpoint))
@@ -365,19 +366,22 @@ class UniprotUpload:
             else:
                 self.writeLog("INFO: Prepared files for the cluster",0)
                 self.writeLog("INFO : Please transfer %s to merlin"%(self.clusterFolder),0)
-                self.writeLog("HINT: Command for file transfer")
-                self.writeLog("HINT: rsync -avz %s <username>@merlinl01.psi.ch:"%(self.clusterFolder),0)
+                self.writeLog("HINT: Command for file transfer",0)
+                self.writeLog("HINT: rsync -avz %s %s@%s:%s"%(self.clusterFolder,self.userName,self.remoteHoste, self.remoteDir),0)
                 self.writeLog("INFO: End of local calculation",0)
 
     def transferFiles(self):
         """Step 17. Rsync output to remote host"""
-        self.writeLog("INFO: Transfering files to Merlin cluster",0)
-        tfile=call(["rsync","az",self.clusterFolder,"%s@%s:%s"%(self.userName, self.remoteHost, self.remoteDir)])
-        if tfile:
-            self.writeLog("ERROR: Can't transfer files",17)
-            raise Exception()
+        if self.remoteHost:
+            self.writeLog("INFO: Transfering files to Merlin cluster",0)
+            tfile=call(["rsync","az",self.clusterFolder,"%s@%s:%s"%(self.userName, self.remoteHost, self.remoteDir)])
+            if tfile:
+                self.writeLog("ERROR: Can't transfer files",17)
+                raise Exception()
+            else:
+                self.writeLog("INFO: File transfer finished",17)
         else:
-            self.writeLog("INFO: File transfer finished",17)
+            self.writeLog("INFO: No remote host set. Skipping transfer")
 
     def currentVersion(self):
         """Get the most recent uniprot Version"""

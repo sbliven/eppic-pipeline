@@ -1,3 +1,3 @@
 import luigi
 
-print "Running __main__"
+print "ERROR: Please run an individual task. E.g. 'luigi --module eppicpipeline.luigi.uniprot Main'"

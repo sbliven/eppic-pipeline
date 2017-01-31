@@ -101,3 +101,7 @@ scheduler_port = 8090
 [UniprotUploadTask]
 # Keep uniprot intermediate directory, in case of errors
 #dont_remove_tmp_dir = True
+# Upload to remote host upon completion
+#remote_host =
+#remote_user =
+#remote_dir =

@@ -30,6 +30,10 @@ class UniprotUploadTask(Task):
     mysql_user = Parameter(default=EppicConfig().db_root_user)
     mysql_password = Parameter(default=EppicConfig().db_root_password)
 
+    remote_host = Parameter(description="Remote host to copy results to")
+    remote_user = Parameter(description="Username of remote host",default="")
+    remote_dir  = Parameter(description="Path to place results on remote host",default="")
+
     dont_remove_tmp_dir=BoolParameter(description="In the case of errors, keep the temp directory around")
     ## Definitions for database downloads
     urlSifts = Parameter(description="sifts URL",
@@ -95,6 +99,10 @@ class UniprotUploadTask(Task):
             p.mysqluser = self.mysql_user
             p.mysqlhost = self.mysql_host
             p.mysqlpasswd = self.mysql_password
+            if self.remote_user:
+                p.userName = self.remote_user
+            p.remoteHost = self.remote_host
+            p.remoteDir = self.remoteDir
             p.runAll()
 
             # Move results into correct destination
