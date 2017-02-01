@@ -252,7 +252,20 @@ class UniprotUpload:
     def uploadTaxonomyTable(self):
         """Step 10. Populate the taxonomy database table"""
         self.writeLog("INFO: Uploading data into taxonomy table in %s"%(self.uniprotDatabase),0)
-        sqlcmd='''LOAD DATA LOCAL INFILE '%s/taxonomy-all.tab' INTO TABLE taxonomy IGNORE 1 LINES'''%(self.downloadFolder)
+        sqlcmd='''LOAD DATA LOCAL INFILE '%s/taxonomy-all.tab'
+        INTO TABLE taxonomy
+            (`tax_id`,
+            `mnemonic`,
+            `scientific`,
+            `common`,
+            `synonym`,
+            `other`,
+            `reviewed`,
+            `rank`,
+            `lineage`,
+            `parent`,
+            @viralhost)
+        IGNORE 1 LINES'''%(self.downloadFolder)
         try:
             self.cursor.execute(sqlcmd)
         except MySQLdb.Error, e:
