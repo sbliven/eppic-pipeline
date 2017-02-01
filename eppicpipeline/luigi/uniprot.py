@@ -1,5 +1,5 @@
 import luigi
-from luigi import Task,Parameter,BoolParameter,LocalTarget,WrapperTask,ChoiceParameter
+from luigi import Task,Parameter,BoolParameter,LocalTarget,WrapperTask,ChoiceParameter,IntParameter
 from luigi.contrib.ssh import RemoteTarget
 from luigi.contrib.mysqldb import MySqlTarget
 from eppic_config import EppicConfig
