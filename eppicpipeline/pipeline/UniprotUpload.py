@@ -254,6 +254,7 @@ class UniprotUpload:
         self.writeLog("INFO: Uploading data into taxonomy table in %s"%(self.uniprotDatabase),0)
         sqlcmd='''LOAD DATA LOCAL INFILE '%s/taxonomy-all.tab'
         INTO TABLE taxonomy
+        IGNORE 1 LINES
             (`tax_id`,
             `mnemonic`,
             `scientific`,
@@ -265,7 +266,7 @@ class UniprotUpload:
             `lineage`,
             `parent`,
             @viralhost)
-        IGNORE 1 LINES'''%(self.downloadFolder)
+        '''%(self.downloadFolder)
         try:
             self.cursor.execute(sqlcmd)
         except MySQLdb.Error, e:
@@ -417,16 +418,19 @@ class UniprotUpload:
             checkpoint (int): Step number to resume at
         """
 
-        if checkpoint < 1 or 17 < checkpoint:
+        if checkpoint < 0 or 17 < checkpoint:
             ValueError("Check point not in the list: Do manual debugging")
 
         if checkpoint <= 1:
             self.writeLog("INFO: EPPIC calculation started",0)
-            self.checkMemory()
-            self.connectDatabase()
-            self.createFolders()
         else:
             self.writeLog("INFO: Resuming calculation from step %d"%checkpoint)
+
+        self.checkMemory()
+        self.connectDatabase()
+
+        if checkpoint <= 1:
+            self.createFolders()
         if checkpoint <= 2:
             self.downloadUniprot() #download uniref100.xml.gz
         if checkpoint <= 3:

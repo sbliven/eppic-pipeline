@@ -1,4 +1,5 @@
 import luigi
+from luigi import Task,Parameter, WrapperTask,ExternalTask,LocalTarget
 from eppic_config import EppicConfig
 from pkg_resources import resource_string#, resource_stream, resource_listdir
 import pybars as hb
@@ -7,41 +8,49 @@ from sgetask import CustomSGEJobTask
 from luigi.util import inherits,requires
 import logging
 import os
-from eppicpipeline.luigi.util import IncompleteException
+from eppicpipeline.luigi.util import IncompleteException,ExternalFile
+from eppicpipeline.luigi.uniprot import UniprotUploadStub
 
 logger = logging.getLogger('luigi-interface')
 #config = EppicConfig()
 
 
-class ExternalFile(luigi.ExternalTask):
-    filename = luigi.Parameter()
-    def output(self):
-        return luigi.LocalTarget(self.filename)
 
-class EppicCli(luigi.Task):
+
+class SiftsFile(Task):
+    pass
+
+class EppicCli(Task):
     #input; required
-    pdb = luigi.Parameter()
-    out = luigi.Parameter(default="{}/data/divided/{{mid2}}/{{pdb}}".format(
+    pdb = Parameter(description="Input PDB ID")
+    out = Parameter(default="{}/data/divided/{{mid2}}/{{pdb}}".format(
         EppicConfig().wui_files)
     )
-    log = luigi.Parameter(default="") #Empty for no log
-    jar = luigi.Parameter(default=EppicConfig().eppic_cli_jar)
-    java = luigi.Parameter(default=EppicConfig().java)
-
-    def requires(self): return {
+    log = Parameter(default="") #Empty for no log
+    jar = Parameter(default=EppicConfig().eppic_cli_jar)
+    java = Parameter(default=EppicConfig().java)
+    skip_entropy = BoolParameter(description="Don't calculate entropy scores",
+                                 significant=True)
+    def requires(self):
+        reqs = {
                 "conf":CreateEppicConfig(),
                 "jar":ExternalFile(filename=self.jar),
                 }
+        # Require uniprot database for entropies
+        if not self.skip_entropy:
+            # Stub fails if the db is missing rather than calculating it
+            reqs["db"] = UniprotUploadStub()
+        return reqs
 
     def outputdir(self):
         return str(self.out).format(mid2=self.pdb[1:3],pdb=self.pdb)
     def output(self):
         outs = {
-            "dir":luigi.LocalTarget(self.outputdir()),
-            "finished":luigi.LocalTarget("{}/finished".format(self.outputdir()) )
+            "dir":LocalTarget(self.outputdir()),
+            "finished":LocalTarget("{}/finished".format(self.outputdir()) )
             }
         if self.log:
-            outs["log"]=luigi.LocalTarget(self.log)
+            outs["log"]=LocalTarget(self.log)
         return outs
 
     def run(self):
@@ -59,10 +68,12 @@ class EppicCli(luigi.Task):
             "-w", #webui.dat
             "-g",conf.eppic_cli_conf_file,
             "-l", #pymol images
-            #"-s", #entropy scores
             "-P", #assembly diagrams
             "-p", #interface coordinates
         ]
+        if not self.skip_entropy:
+            cmd.append("-s") #entropy scores
+
         rtn = -1
         if log is not None:
             with self.output()["log"].open('w') as out:
@@ -77,11 +88,11 @@ class EppicCli(luigi.Task):
             raise IncompleteException("Some outputs were not generated")
 
 
-class CreateEppicConfig(luigi.Task):
-    eppic_cli_conf_file = luigi.Parameter(default=EppicConfig().eppic_cli_conf_file)
+class CreateEppicConfig(Task):
+    eppic_cli_conf_file = Parameter(default=EppicConfig().eppic_cli_conf_file)
 
     def output(self):
-        return luigi.LocalTarget(self.eppic_cli_conf_file)
+        return LocalTarget(self.eppic_cli_conf_file)
 
     def run(self):
         conf = resource_string(__name__, 'eppic.conf.hbs')
@@ -110,9 +121,9 @@ class SGEEppicCli(CustomSGEJobTask):
         return str(self.out).format(mid2=self.pdb[1:3],pdb=self.pdb)
     def output(self):
         return {
-            "log":luigi.LocalTarget(self.log) if self.log is not None else None,
-            "dir":luigi.LocalTarget(self.outputdir()),
-            "finished":luigi.LocalTarget("{}/finished".format(self.outputdir()) )
+            "log":LocalTarget(self.log) if self.log is not None else None,
+            "dir":LocalTarget(self.outputdir()),
+            "finished":LocalTarget("{}/finished".format(self.outputdir()) )
             }
 
     def work(self):
@@ -156,10 +167,10 @@ class SGEEppicCli(CustomSGEJobTask):
         if not self.complete():
             raise IncompleteException("Some outputs were not generated")
 
-class EppicList(luigi.WrapperTask):
-    input_list = luigi.Parameter(description="File containing a list of PDB IDs to run")
+class EppicList(WrapperTask):
+    input_list = Parameter(description="File containing a list of PDB IDs to run")
 
-    wui_files = luigi.Parameter(description="EPPIC output files root dir", default=EppicConfig().wui_files)
+    wui_files = Parameter(description="EPPIC output files root dir", default=EppicConfig().wui_files)
 
     def requires(self):
         # Require the input
@@ -197,5 +208,5 @@ class SGEEppicList(EppicList):
 
 
 @requires(SGEEppicList)
-class Main(luigi.WrapperTask):
+class Main(WrapperTask):
     pass

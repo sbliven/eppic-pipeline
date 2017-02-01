@@ -37,6 +37,8 @@ class UniprotUploadTask(Task):
     remote_dir  = Parameter(description="Path to place results on remote host",default="")
 
     dont_remove_tmp_dir=BoolParameter(description="In the case of errors, keep the temp directory around")
+    resume_dir=Parameter(description="resume from a previous aborted attempt",default="")
+    resume_step=IntParameter(description="checkpoint number", default=0)
     overwrite_behavior = ChoiceParameter(description="Behavior in the case of an existing database",
             choices=["IGNORE","DROP","ERROR"])
 
@@ -100,12 +102,12 @@ class UniprotUploadTask(Task):
         logger.info("mysql -h %s -u %s"%(self.mysql_host,self.mysql_user))
 
         #Use temporary directory
-        #with uniprot_dir.temporary_path() as temp_path:
-        temp_path = tempfile.mkdtemp(prefix="UniprotUploadTask_",dir=os.path.dirname(self.uniprot_dir))
+        if not self.resume_dir:
+            self.resume_dir = tempfile.mkdtemp(prefix="UniprotUploadTask_",dir=os.path.dirname(self.uniprot_dir))
         try:
-            logger.info("Using temp dir %s instead of %s"%(temp_path,self.uniprot_dir))
+            logger.info("Using temp dir %s instead of %s"%(self.resume_dir,self.uniprot_dir))
 
-            p = UniprotUpload( temp_path )
+            p = UniprotUpload( self.resume_dir )
             # TODO finish parameterizing the UniprotUpload settings
             p.eppicjar = self.jar
             p.uniprotDatabase = self.uniprot_db
@@ -117,19 +119,19 @@ class UniprotUploadTask(Task):
             p.remoteHost = self.remote_host
             p.remoteDir = self.remote_dir
             p.overwrite_behavior = self.overwrite_behavior
-            p.runAll()
+            p.runAll(self.resume_step)
 
             # Move results into correct destination
-            shutil.move(temp_path,self.uniprot_dir)
+            shutil.move(self.resume_dir,self.uniprot_dir)
 
             # Mark database as finished
             outs["uniprot_db"].touch()
 
         finally:
-            # clean up temp_path if errors occured
-            if not self.dont_remove_tmp_dir and os.path.exists(temp_path):
-                logger.info("Removing temp dir %s",temp_path)
-                shutil.rmtree(temp_path)
+            # clean up self.resume_dir if errors occured
+            if not self.dont_remove_tmp_dir and os.path.exists(self.resume_dir):
+                logger.info("Removing temp dir %s",self.resume_dir)
+                shutil.rmtree(self.resume_dir)
         # Check for completion
         if not self.complete():
             raise IncompleteException("Some files failed to generate: %s" % " ".join(f.path for _,f in outs.items() if not f.exists()))
