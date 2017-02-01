@@ -98,6 +98,8 @@ class UniprotUploadTask(Task):
             raise ValueError("No Mysql Host")
         if not uniprot_dir:
             raise ValueError("No uniprot_dir")
+        if self.resume_step >= 7 and self.overwrite_behavior == "DROP":
+            raise ValueError("Set to DROP databases, but resuming from after their recreation. Did you mean --overwrite-behavior=IGNORE?")
 
         logger.info("mysql -h %s -u %s"%(self.mysql_host,self.mysql_user))
 
