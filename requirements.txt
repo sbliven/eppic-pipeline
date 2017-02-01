@@ -1,2 +1,4 @@
-luigi==2.3.3
-pybars>=0.0.4
+--index-url https://pypi.python.org/simple/
+
+-e .
+

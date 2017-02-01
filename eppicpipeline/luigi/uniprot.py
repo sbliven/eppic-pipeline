@@ -1,5 +1,7 @@
 import luigi
 from luigi import Task,Parameter,BoolParameter,LocalTarget,WrapperTask,ChoiceParameter
+from luigi.contrib.ssh import RemoteTarget
+from luigi.contrib.mysqldb import MySqlTarget
 from eppic_config import EppicConfig
 import subprocess
 from luigi.util import inherits,requires
@@ -113,7 +115,7 @@ class UniprotUploadTask(Task):
             if self.remote_user:
                 p.userName = self.remote_user
             p.remoteHost = self.remote_host
-            p.remoteDir = self.remoteDir
+            p.remoteDir = self.remote_dir
             p.overwrite_behavior = self.overwrite_behavior
             p.runAll()
 
