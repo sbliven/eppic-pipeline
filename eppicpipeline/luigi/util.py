@@ -38,3 +38,65 @@ class CachedRemoteFile(Task):
         with self.output().open('wb') as tmp:
             for chunk in iter(lambda: response.read(chunksize), ''):
                 tmp.write(chunk)
+
+
+class RsyncTask(Task):
+    """
+    Uses rsync to transfer directories between potentially remote destinations
+
+    Note that this should only be used for initial transfers, as it will not
+    be run if the destination directory exists.
+
+    Also note that src should end with at / if it is a directory.
+    """
+    opts = Parameter(description="options passed to rsync",default="-az")
+    src = Parameter()
+    dst = Parameter()
+    src_host = Parameter(default="")
+    src_user = Parameter(default="")
+    dst_host = Parameter(default="")
+    dst_user = Parameter(default="")
+    def requires(self):
+        if self.src_host:
+            yield RemoteExternalFile(path=self.src,host=self.src_host)
+        else:
+            yield ExternalFile(path=self.src)
+
+    def output(self):
+        if self.dst_host:
+            yield RemoteTarget(self.dst,self.dst_host)
+        else:
+            yield LocalTarget(self.dst)
+
+    def run(self):
+        # build command
+        cmd = ["rsync", self.opts]
+        srcparts = []
+        if self.src_host:
+            if self.src_user:
+                srcparts.append(self.src_user)
+                srcparts.append("@")
+            srcparts.append(self.src_host)
+            srcparts.append(":")
+        srcparts.append(self.src)
+        cmd.append("".join(srcparts))
+
+        dstparts = []
+        if self.dst_host:
+            if self.dst_user:
+                dstparts.append(self.dst_user)
+                dstparts.append("@")
+            dstparts.append(self.dst_host)
+            dstparts.append(":")
+        dstparts.append(self.dst)
+        cmd.append("".join(dstparts))
+
+        logger.debug("Calling %s"," ".join(cmd))
+        rtn = subprocess.call(cmd)
+
+        if rtn:
+            raise IncompleteException("rsync existed with status %d"%rtn)
+
+        # note that this only checks for the top-level dir
+        if not self.complete():
+            raise IncompleteException("rsync failed")
