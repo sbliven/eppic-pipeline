@@ -386,17 +386,19 @@ class UniprotUpload:
                 self.writeLog("INFO: Prepared files for the cluster",0)
                 self.writeLog("INFO : Please transfer %s to merlin"%(self.clusterFolder),0)
                 self.writeLog("HINT: Command for file transfer",0)
-                self.writeLog("HINT: rsync -avz %s %s@%s:%s"%(self.clusterFolder,self.userName,self.remoteHoste, self.remoteDir),0)
+                self.writeLog("HINT: rsync -avz %s %s@%s:%s"%(self.clusterFolder,self.userName,self.remoteHost, self.remoteDir),0)
                 self.writeLog("INFO: End of local calculation",0)
 
     def transferFiles(self):
         """Step 17. Rsync output to remote host"""
         if self.remoteHost:
             self.writeLog("INFO: Transfering files to Merlin cluster",0)
-            tfile=call(["rsync","az",self.clusterFolder,"%s@%s:%s"%(self.userName, self.remoteHost, self.remoteDir)])
+            cmd=["rsync","-az","--",self.clusterFolder,"%s@%s:%s"%(self.userName, self.remoteHost, self.remoteDir)]
+            self.writeLog("INFO: "+" ".join(cmd),0)
+            tfile=call(cmd)
             if tfile:
                 self.writeLog("ERROR: Can't transfer files",17)
-                raise Exception()
+                raise Exception("ERROR: Can't transfer files. Rsync returned %d"%tfile)
             else:
                 self.writeLog("INFO: File transfer finished",17)
         else:
