@@ -8,7 +8,7 @@ Eppic computation pipeline script
 from commands import getstatusoutput,getoutput
 from subprocess import Popen,PIPE,call
 from string import atof
-import MySQLdb
+import pymysql
 import sys
 from time import localtime,strftime
 from urllib2 import urlopen
@@ -101,10 +101,11 @@ class UniprotUpload:
         self.writeLog("INFO: Connecting to MySQL database",0)
         # Connect with no database
         try:
-            self.cnx=MySQLdb.connect(user=self.mysqluser,host=self.mysqlhost,passwd=self.mysqlpasswd,local_infile=True)
+            self.cnx=pymysql.connect(user=self.mysqluser, host=self.mysqlhost,
+                                     passwd=self.mysqlpasswd, local_infile=True)
             self.cursor = self.cnx.cursor()
         except Exception as e:
-            self.writeLog("ERROR:Can't connect to mysql database",1)
+            self.writeLog("ERROR:Can't connect to mysql database: %s"%e.message,1)
             raise e
         # Check if the database already exists
         chkflg=self.cursor.execute("SHOW DATABASES like '%s'"%(self.uniprotDatabase))
@@ -124,7 +125,8 @@ class UniprotUpload:
             # doesn't exist
             createdb=self.cursor.execute("CREATE DATABASE %s"%(self.uniprotDatabase))
             self.writeLog("INFO: Connected to %s database"%(self.uniprotDatabase),0)
-        self.cnx=MySQLdb.connect(user=self.mysqluser,host=self.mysqlhost,passwd=self.mysqlpasswd,db=self.uniprotDatabase,local_infile=True)
+        self.cnx=pymysql.connect(user=self.mysqluser, host=self.mysqlhost,
+                                 passwd=self.mysqlpasswd, db=self.uniprotDatabase, local_infile=True)
         self.cursor = self.cnx.cursor()
 
 
@@ -223,14 +225,13 @@ class UniprotUpload:
         sqlcmd='''LOAD DATA LOCAL INFILE '%s/uniref100.tab' INTO TABLE uniprot'''%(self.downloadFolder)
         try:
             self.cursor.execute(sqlcmd)
-        except MySQLdb.Error, e:
+        except pymysql.Error as e:
             self.writeLog("ERROR: Can't upload data into uniprot table",8)
             try:
                 self.writeLog("ERROR: MySQL Error [%d]: %s" % (e.args[0], e.args[1]),8)
-                raise Exception()
             except IndexError:
                 self.writeLog("ERROR: MySQL Error: %s" % str(e),8)
-                raise Exception()
+            raise e
         self.writeLog("INFO: Uploading uniprot table finished",0)
 
     def uploadUniprotClustersTable(self):
@@ -239,14 +240,13 @@ class UniprotUpload:
         sqlcmd='''LOAD DATA LOCAL INFILE '%s/uniref100.clustermembers.tab' INTO TABLE uniprot_clusters'''%(self.downloadFolder)
         try:
             self.cursor.execute(sqlcmd)
-        except MySQLdb.Error, e:
+        except pymysql.Error as e:
             self.writeLog("ERROR: Can't upload uniprot_cluster data",9)
             try:
                 self.writeLog("ERROR: MySQL Error [%d]: %s" % (e.args[0], e.args[1]),9)
-                raise Exception()
             except IndexError:
                 self.writeLog("ERROR: MySQL Error: %s" % str(e),9)
-                raise Exception()
+            raise e
         self.writeLog("INFO: Uploading uniprot_clusters finished",0)
 
     def uploadTaxonomyTable(self):
@@ -269,14 +269,13 @@ class UniprotUpload:
         '''%(self.downloadFolder)
         try:
             self.cursor.execute(sqlcmd)
-        except MySQLdb.Error, e:
+        except pymysql.Error as e:
             self.writeLog("ERROR: Can't upload taxonomy data",10)
             try:
                 self.writeLog("ERROR: MySQL Error [%d]: %s" % (e.args[0], e.args[1]),10)
-                raise Exception()
             except IndexError:
                 self.writeLog("ERROR: MySQL Error: %s" % str(e),10)
-                raise Exception()
+            raise e
         self.writeLog("INFO: Uploading taxonomy finished",0)
 
 
@@ -286,14 +285,13 @@ class UniprotUpload:
         sqlcmd="CREATE INDEX UNIPROTID_IDX ON uniprot (uniprot_id)"
         try:
             self.cursor.execute(sqlcmd)
-        except MySQLdb.Error, e:
+        except pymysql.Error as e:
             self.writeLog("ERROR: Can't index uniprot table",11)
             try:
                 self.writeLog("ERROR: MySQL Error [%d]: %s" % (e.args[0], e.args[1]),11)
-                raise Exception()
             except IndexError:
                 self.writeLog("ERROR: MySQL Error: %s" % str(e),11)
-                raise Exception()
+            raise e
         self.writeLog("INFO: Indexing uniprot table finished",0)
 
     def downloadUniprotReldate(self):
