@@ -20,8 +20,6 @@ db=2016_09
 #uniprot_db=uniprot_{db}
 eppic_db=eppic3_{db}_test
 
-# Mysql hostname
-#db_host=localhost
 #################################
 #### Host-specific variables ####
 #################################
@@ -31,8 +29,11 @@ eppic_db=eppic3_{db}_test
 # Credentials must be defined in credentials.conf
 #mysql_host=127.0.0.1
 
-# EPPIC output files
+# EPPIC output files. Internally contains data/divided/??/????
 wui_files=./wui/files3_{db}_test
+
+# Uniprot download directory. Contains the blast_db_dir and unique_fasta
+#uniprot_dir=./eppic_{db}
 
 
 ## Vars for running EPPIC
@@ -44,9 +45,10 @@ eppic_cli_conf_file = ./eppic_cli_{db}.conf
 # May be omitted if all JAR files below are specified
 eppic_source_dir=./eppic-src
 
-#
+# Directory containing blast database files (.phr, .psq, etc)
 blast_db_dir = ./uniprot/uniprot_15.11
 
+# Output of running blast
 blast_cache_dir = ./blast_cache/uniprot_2015_03
 
 # Local PDB cache
@@ -63,12 +65,13 @@ blast_cache_dir = ./blast_cache/uniprot_2015_03
 
 ## External Dependencies
 
-blastclust = /nfs/data/software/packages/blast-2.2.18/bin/blastclust
-blast_data = /nfs/data/software/packages/blast-2.2.18/data
-blastp = /nfs/data/software/packages/ncbi-blast-2.2.31+/bin/blastp
-clustalo = /nfs/data/software/bin/clustalo
-pymol = /afs/psi.ch/project/strucbiol/xsoft/pymol-v1.8.0.6_64/pymol
-graphviz = /usr/bin/dot
+#java =       java
+#blastclust = /nfs/data/software/packages/blast-2.2.18/bin/blastclust
+#blast_data = /nfs/data/software/packages/blast-2.2.18/data
+#blastp =     /nfs/data/software/packages/ncbi-blast-2.2.31+/bin/blastp
+#clustalo =   /nfs/data/software/bin/clustalo
+#pymol =      /afs/psi.ch/project/strucbiol/xsoft/pymol-v1.8.0.6_64/pymol
+#graphviz =   /usr/bin/dot
 
 #################################
 ######## Global variables #######

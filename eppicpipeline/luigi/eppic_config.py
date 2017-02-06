@@ -1,9 +1,14 @@
 import luigi
 from luigi import Parameter
+import os.path
 
-import luigi.configuration
-luigi.configuration.LuigiConfigParser.add_config_path("config/credentials.cfg")
-luigi.configuration.LuigiConfigParser.add_config_path("config/luigi.cfg")
+# Search for credentials in same places as luigi.cfg
+from luigi.configuration import LuigiConfigParser
+for path in LuigiConfigParser._config_paths:
+    base = os.path.basename(path)
+    if base == "luigi.cfg":
+        d = os.path.dirname(path)
+        LuigiConfigParser.add_config_path(os.path.join(d,"credentials.cfg"))
 
 class EppicConfig(luigi.Config):
     # Master run variable, used for generating other paths
@@ -14,11 +19,12 @@ class EppicConfig(luigi.Config):
         default="eppic3_{db}")
     uniprot_db = Parameter(description="Uniprot database name",
         default="uniprot_{db}")
-    db_host= Parameter(description="MySQL hostname",default="localhost")
+    mysql_host= Parameter(description="MySQL hostname",default="localhost")
 
     wui_files = Parameter(description="EPPIC output files")
 
     uniprot_dir = Parameter(description="uniprot download directory",default="")
+    scratch_dir = Parameter(description="scratch directory (large temporary storage for compute nodes)",default="")
 
     eppic_cli_conf_file = Parameter(description="Location for the eppic config file",
             default="./eppic_cli_{db}.conf")
@@ -50,11 +56,11 @@ class EppicConfig(luigi.Config):
 
 
     ## credentials.cfg
-    db_user= Parameter(description="MySQL user for standard actions",default="")
-    db_password= Parameter(description="MySQL password for standard actions",default="")
+    mysql_user= Parameter(description="MySQL user for standard actions",default="",significant=False)
+    mysql_password= Parameter(description="MySQL password for standard actions",default="",significant=False)
     # MySQL user with create database permissions
-    db_root_user= Parameter(description="MySQL user for database creation",default="")
-    db_root_password= Parameter(description="MySQL password for database creation",default="")
+    mysql_root_user= Parameter(description="MySQL user for database creation",default="",significant=False)
+    mysql_root_password= Parameter(description="MySQL password for database creation",default="",significant=False)
 
     def __getattribute__(self,name):
         # Any string attributes (e.g. Parameters) get passed through format

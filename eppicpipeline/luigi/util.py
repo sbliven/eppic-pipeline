@@ -12,27 +12,27 @@ class IncompleteException(Exception):
     pass
 
 class ExternalFile(ExternalTask):
-    path = Parameter()
+    filename = Parameter()
     def output(self):
-        return LocalTarget(self.path)
+        return LocalTarget(self.filename)
 
 class RemoteExternalFile(ExternalTask):
-    path = Parameter()
+    filename = Parameter()
     host = Parameter()
 
     def output(self):
-        return RemoteTarget(self.path,self.host)
+        return RemoteTarget(self.filename,self.host)
 
 class CachedRemoteFile(Task):
     """Download a remote file to a known local location"""
-    path = Parameter(description="Local path")
+    filename = Parameter(description="Local path")
     url = Parameter(description="URL to download the file",significant=False)
 
     def output(self):
-        return LocalTarget(self.path)
+        return LocalTarget(self.filename)
 
     def run(self):
-        logger.info("Downloading {url} to {path}".format(**self.__dict__))
+        logger.info("Downloading {url} to {filename}".format(**self.__dict__))
         response = urllib2.urlopen(self.url)
         chunksize = 1024
         with self.output().open('wb') as tmp:
@@ -58,9 +58,9 @@ class RsyncTask(Task):
     dst_user = Parameter(default="")
     def requires(self):
         if self.src_host:
-            yield RemoteExternalFile(path=self.src,host=self.src_host)
+            yield RemoteExternalFile(filename=self.src,host=self.src_host)
         else:
-            yield ExternalFile(path=self.src)
+            yield ExternalFile(filename=self.src)
 
     def output(self):
         if self.dst_host:

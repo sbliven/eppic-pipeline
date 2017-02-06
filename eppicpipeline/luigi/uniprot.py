@@ -2,14 +2,13 @@ import luigi
 from luigi import Task,Parameter,BoolParameter,LocalTarget,WrapperTask,ChoiceParameter,IntParameter
 from luigi.contrib.ssh import RemoteTarget
 from luigi.contrib.mysqldb import MySqlTarget
-from eppic_config import EppicConfig
+from .eppic_config import EppicConfig
 import subprocess
 from luigi.util import inherits,requires
 import logging
 import os
-import eppicpipeline
-from eppicpipeline.pipeline.UniprotUpload import UniprotUpload
-from eppicpipeline.luigi.util import IncompleteException
+from .UniprotUpload import UniprotUpload
+from .util import IncompleteException
 import tempfile
 from urllib2 import urlopen
 import shutil
@@ -28,9 +27,9 @@ class UniprotUploadTask(Task):
     jar = luigi.Parameter(default=EppicConfig().eppic_cli_jar)
     uniprot_db = Parameter(default=EppicConfig().uniprot_db)
 
-    mysql_host = Parameter(default="localhost")
-    mysql_user = Parameter(default=EppicConfig().db_root_user)
-    mysql_password = Parameter(default=EppicConfig().db_root_password)
+    mysql_host = Parameter(default=EppicConfig().mysql_host)
+    mysql_user = Parameter(default=EppicConfig().mysql_root_user,significant=False)
+    mysql_password = Parameter(default=EppicConfig().mysql_root_password,significant=False)
 
     remote_host = Parameter(description="Remote host to copy results to")
     remote_user = Parameter(description="Username of remote host",default="")
@@ -40,7 +39,7 @@ class UniprotUploadTask(Task):
     resume_dir=Parameter(description="resume from a previous aborted attempt",default="")
     resume_step=IntParameter(description="checkpoint number", default=0)
     overwrite_behavior = ChoiceParameter(description="Behavior in the case of an existing database",
-            choices=["IGNORE","DROP","ERROR"])
+            choices=["IGNORE","DROP","ERROR"],default="ERROR")
 
     ## Definitions for database downloads
     urlSifts = Parameter(description="sifts URL",
@@ -67,9 +66,8 @@ class UniprotUploadTask(Task):
 
 
     def output(self):
-        return {
+        outs = {
             "uniprot_dir": LocalTarget(self.uniprot_dir),
-            "remote_dir": RemoteTarget(self.remote_dir,self.remote_host,username=self.remote_user),
             "uniprot_db": MySqlTarget(
                     host=self.mysql_host,
                     database=self.uniprot_db,
@@ -78,6 +76,15 @@ class UniprotUploadTask(Task):
                     table="uniprot",
                     update_id=self.uniprot_db)
         }
+        if self.remote_host and self.remote_host not in ["localhost","127.0.0.1"]:
+            if self.remote_user:
+                outs["remote_dir"] = RemoteTarget(self.remote_dir,self.remote_host,username=self.remote_user)
+            else:
+                outs["remote_dir"] = RemoteTarget(self.remote_dir,self.remote_host)
+        else:
+            outs["remote_dir"] = LocalTarget(self.remote_dir)
+
+        return outs
     def run(self):
 
         # Check that the input version is the latest
@@ -124,6 +131,8 @@ class UniprotUploadTask(Task):
             p.runAll(self.resume_step)
 
             # Move results into correct destination
+            #TODO should actually be p.clusterFolder that gets moved, with
+            #TODO the download dir and logs being discarded upon success. -SB
             shutil.move(self.resume_dir,self.uniprot_dir)
 
             # Mark database as finished
@@ -146,6 +155,7 @@ class UniprotUploadTask(Task):
 @inherits(UniprotUploadTask)
 class UniprotUploadStub(UniprotUploadTask):
     def run(self):
+        logger.info("Unfulfilled outputs: %s", ", ".join([k for k,v in self.output().items() if not v.exists()]))
         raise IncompleteException("This stub implementation requires external population of the database")
 
 class Main(WrapperTask):
