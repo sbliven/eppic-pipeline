@@ -59,3 +59,22 @@ class CustomSGEJobTask(SGEJobTask):
         if (self.tmp_dir and os.path.exists(self.tmp_dir) and not self.dont_remove_tmp_dir):
             logger.info('Removing temporary directory %s' % self.tmp_dir)
             subprocess.call(["rm", "-rf", self.tmp_dir])
+
+import importlib
+import pymysql
+class Test(CustomSGEJobTask):
+    out = luigi.Parameter()
+    def output(self):
+        return luigi.LocalTarget(self.out)
+    def complete(self):
+        return False #always run
+    def work(self):
+        packages = "luigi eppicpipeline eppicpipeline.luigi.uniprot uniprot .uniprot eppicpipeline.pipeline.UniprotUpload pymysql".split()
+        with self.output().open('w') as out:
+            for package in packages:
+                out.write("Trying %s\n"%package)
+                try:
+                    importlib.import_module(package)
+                    out.write("...SUCCESS\n")
+                except Exception as e:
+                    out.write("...ERROR. %s\n"%e)
