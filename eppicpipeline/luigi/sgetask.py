@@ -7,6 +7,8 @@ from luigi.contrib import sge_runner
 
 logger = logging.getLogger('luigi-interface')
 
+import eppicpipeline
+luigi.contrib.sge.attach(eppicpipeline)
 
 def _build_qsub_command(cmd, job_name, outfile, errfile, pe, n_cpu):
     """Submit shell command to SGE queue via `qsub`"""

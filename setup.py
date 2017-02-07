@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 
 setup(name="eppicpipeline",
     #Pipeline version plus eppic version
-    version="0.0.1.3.0.0",
+    version="0.0.2.3.0.0",
     description="Tools for running EPPIC",
     url="http://github.com/eppic/eppic-pipeline",
     author="Spencer Bliven",

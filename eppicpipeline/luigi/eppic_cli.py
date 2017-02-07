@@ -1,6 +1,6 @@
 import luigi
 from luigi import Task,Parameter, WrapperTask,ExternalTask,LocalTarget,BoolParameter
-from .eppic_config import EppicConfig
+from eppicpipeline.luigi.eppic_config import EppicConfig
 from pkg_resources import resource_string#, resource_stream, resource_listdir
 import pybars as hb
 import subprocess
@@ -8,8 +8,8 @@ from sgetask import CustomSGEJobTask
 from luigi.util import inherits,requires
 import logging
 import os
-from .util import IncompleteException,ExternalFile
-from .uniprot import UniprotUploadStub
+from eppicpipeline.luigi.util import IncompleteException,ExternalFile
+from eppicpipeline.pipeline.uniprot import UniprotUploadStub
 
 logger = logging.getLogger('luigi-interface')
 #config = EppicConfig()

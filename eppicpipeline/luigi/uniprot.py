@@ -2,13 +2,13 @@ import luigi
 from luigi import Task,Parameter,BoolParameter,LocalTarget,WrapperTask,ChoiceParameter,IntParameter
 from luigi.contrib.ssh import RemoteTarget
 from luigi.contrib.mysqldb import MySqlTarget
-from .eppic_config import EppicConfig
+from eppicpipeline.luigi.eppic_config import EppicConfig
 import subprocess
 from luigi.util import inherits,requires
 import logging
 import os
-from .UniprotUpload import UniprotUpload
-from .util import IncompleteException
+from eppicpipeline.pipeline.UniprotUpload import UniprotUpload
+from eppicpipeline.luigi.util import IncompleteException
 import tempfile
 from urllib2 import urlopen
 import shutil
