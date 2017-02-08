@@ -2,7 +2,7 @@ import luigi
 from luigi import Task,Parameter,BoolParameter,LocalTarget,WrapperTask,ChoiceParameter,IntParameter
 from luigi.contrib.ssh import RemoteTarget
 from luigi.contrib.mysqldb import MySqlTarget
-from eppicpipeline.luigi.eppic_config import EppicConfig
+from eppicpipeline.luigi.eppic_config import eppicconfig
 import subprocess
 from luigi.util import inherits,requires
 import logging
@@ -20,16 +20,16 @@ class UniprotUploadTask(Task):
     Download uniprot and prepare the uniprot database
     """
     #TODO default to the latest, and somehow pass the version to upstream tasks
-    db = Parameter(description="Uniprot db date (e.g. 2017_01)", default=EppicConfig().db)
+    db = Parameter(description="Uniprot db date (e.g. 2017_01)", default=eppicconfig().db)
     allow_old = BoolParameter(description="Don't fail if the provided version is not the latest")
 
-    uniprot_dir = Parameter(description="uniprot download directory",default=EppicConfig().uniprot_dir)
-    jar = luigi.Parameter(default=EppicConfig().eppic_cli_jar)
-    uniprot_db = Parameter(default=EppicConfig().uniprot_db)
+    uniprot_dir = Parameter(description="uniprot download directory",default=eppicconfig().uniprot_dir)
+    jar = luigi.Parameter(default=eppicconfig().eppic_cli_jar)
+    uniprot_db = Parameter(default=eppicconfig().uniprot_db)
 
-    mysql_host = Parameter(default=EppicConfig().mysql_host)
-    mysql_user = Parameter(default=EppicConfig().mysql_root_user,significant=False)
-    mysql_password = Parameter(default=EppicConfig().mysql_root_password,significant=False)
+    mysql_host = Parameter(default=eppicconfig().mysql_host)
+    mysql_user = Parameter(default=eppicconfig().mysql_root_user,significant=False)
+    mysql_password = Parameter(default=eppicconfig().mysql_root_password,significant=False)
 
     remote_host = Parameter(description="Remote host to copy results to")
     remote_user = Parameter(description="Username of remote host",default="")

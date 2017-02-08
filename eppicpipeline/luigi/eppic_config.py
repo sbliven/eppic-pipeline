@@ -10,7 +10,26 @@ for path in LuigiConfigParser._config_paths:
         d = os.path.dirname(path)
         LuigiConfigParser.add_config_path(os.path.join(d,"credentials.cfg"))
 
+def eppicconfig():
+    """Shorthand for EppicConfig.instance()"""
+    return EppicConfig.instance()
+
 class EppicConfig(luigi.Config):
+    """Global EPPIC configuration parameters
+
+    Task-specific parameters may still be stored in their respective sections.
+    However, parameters common to several tasks can use the global config section
+    like this:
+
+    `param = Parameter(default=eppiccli().param)`
+
+    Using the instance() method to fetch the singleton is preferred over
+    creating instances directly.
+
+    All parameters undergo variable expansion. The str.format syntax is used
+    (`param1 = derivation_of_{param2}`)
+    """
+
     # Master run variable, used for generating other paths
     # Generally shouldn't be used directly by Tasks
     db = Parameter(description="Database date, e.g. 2016_01")
@@ -61,6 +80,13 @@ class EppicConfig(luigi.Config):
     # MySQL user with create database permissions
     mysql_root_user= Parameter(description="MySQL user for database creation",default="",significant=False)
     mysql_root_password= Parameter(description="MySQL password for database creation",default="",significant=False)
+
+    _instance = None
+    @classmethod
+    def instance(cls):
+        if cls._instance is None:
+            cls._instance = EppicCli()
+        return cls._instance
 
     def __getattribute__(self,name):
         # Any string attributes (e.g. Parameters) get passed through format

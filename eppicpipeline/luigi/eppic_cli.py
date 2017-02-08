@@ -1,6 +1,6 @@
 import luigi
 from luigi import Task,Parameter, WrapperTask,ExternalTask,LocalTarget,BoolParameter
-from eppicpipeline.luigi.eppic_config import EppicConfig
+from eppicpipeline.luigi.eppic_config import eppicconfig
 from pkg_resources import resource_string#, resource_stream, resource_listdir
 import pybars as hb
 import subprocess
@@ -12,9 +12,6 @@ from eppicpipeline.luigi.util import IncompleteException,ExternalFile
 from eppicpipeline.pipeline.uniprot import UniprotUploadStub
 
 logger = logging.getLogger('luigi-interface')
-#config = EppicConfig()
-
-
 
 
 class SiftsFile(Task):
@@ -24,17 +21,17 @@ class EppicCli(Task):
     #input; required
     pdb = Parameter(description="Input PDB ID")
     out = Parameter(default="{}/data/divided/{{mid2}}/{{pdb}}".format(
-        EppicConfig().wui_files)
+        eppicconfig().wui_files)
     )
     log = Parameter(default="") #Empty for no log
-    jar = Parameter(default=EppicConfig().eppic_cli_jar)
-    java = Parameter(default=EppicConfig().java)
+    jar = Parameter(default=eppicconfig().eppic_cli_jar)
+    java = Parameter(default=eppicconfig().java)
     skip_entropy = BoolParameter(description="Don't calculate entropy scores",
                                  significant=True)
 
-    mysql_host = Parameter(default=EppicConfig().mysql_host)
-    mysql_user = Parameter(default=EppicConfig().mysql_root_user,significant=False)
-    mysql_password = Parameter(default=EppicConfig().mysql_root_password,significant=False)
+    mysql_host = Parameter(default=eppicconfig().mysql_host)
+    mysql_user = Parameter(default=eppicconfig().mysql_root_user,significant=False)
+    mysql_password = Parameter(default=eppicconfig().mysql_root_password,significant=False)
 
     def requires(self):
         reqs = {
@@ -94,7 +91,7 @@ class EppicCli(Task):
 
 
 class CreateEppicConfig(Task):
-    eppic_cli_conf_file = Parameter(default=EppicConfig().eppic_cli_conf_file)
+    eppic_cli_conf_file = Parameter(default=eppicconfig().eppic_cli_conf_file)
 
     def output(self):
         return LocalTarget(self.eppic_cli_conf_file)
@@ -104,7 +101,7 @@ class CreateEppicConfig(Task):
         compiler = hb.Compiler()
         # pybars seems to accept only strings (v0.0.4)
         template = compiler.compile(unicode(conf))
-        confstr = template(EppicConfig())
+        confstr = template(eppicconfig())
         # Write to output
         with self.output().open('w') as out:
             if type(confstr) == hb.strlist:
@@ -118,7 +115,7 @@ class CreateEppicConfig(Task):
 class SGEEppicCli(CustomSGEJobTask):
     def requires(self):
         return {
-                "conf":CreateEppicConfig(),
+                "conf":Createeppicconfig(),
                 "jar":ExternalFile(filename=self.jar),
                 }
 
@@ -175,7 +172,7 @@ class SGEEppicCli(CustomSGEJobTask):
 class EppicList(WrapperTask):
     input_list = Parameter(description="File containing a list of PDB IDs to run")
 
-    wui_files = Parameter(description="EPPIC output files root dir", default=EppicConfig().wui_files)
+    wui_files = Parameter(description="EPPIC output files root dir", default=eppicconfig().wui_files)
 
     def requires(self):
         # Require the input
