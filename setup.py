@@ -14,8 +14,9 @@ setup(name="eppicpipeline",
         "luigi  >= 2.3",
         "pybars >= 0.0.4",
         "PyMySql >= 0.7.9", #some versions of luigi need mysql-connector-python-rf too.
+        "subprocess32 >= 3.2",
     ],
     packages=find_packages(),
-    package_data={'': ['*.hbs']}
+    package_data={'': ['*.hbs','*.list']}
 
     )

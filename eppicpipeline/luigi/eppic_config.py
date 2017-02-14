@@ -45,6 +45,9 @@ class EppicConfig(luigi.Config):
     uniprot_dir = Parameter(description="uniprot download directory",default="")
     scratch_dir = Parameter(description="scratch directory (large temporary storage for compute nodes)",default="")
 
+    sentinel_dir = Parameter(description="Directory for sentinel files. May be emptied between runs with impunity.",
+        default="/tmp/luigi_sentinels")
+
     eppic_cli_conf_file = Parameter(description="Location for the eppic config file",
             default="./eppic_cli_{db}.conf")
 
@@ -85,7 +88,7 @@ class EppicConfig(luigi.Config):
     @classmethod
     def instance(cls):
         if cls._instance is None:
-            cls._instance = EppicCli()
+            cls._instance = cls()
         return cls._instance
 
     def __getattribute__(self,name):
