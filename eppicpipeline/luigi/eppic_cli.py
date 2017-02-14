@@ -9,7 +9,7 @@ from luigi.util import inherits,requires
 import logging
 import os
 from eppicpipeline.luigi.util import IncompleteException,ExternalFile
-from eppicpipeline.pipeline.uniprot import UniprotUploadStub
+from eppicpipeline.luigi.uniprot import UniprotUploadStub
 
 logger = logging.getLogger('luigi-interface')
 
@@ -61,6 +61,16 @@ class EppicCli(Task):
         outs = self.output()
         log = outs.get("log") #None if not set
 
+        dirname = os.path.dirname(self.outputdir())
+        if not os.path.exists(dirname):
+            try:
+                os.makedirs(dirname)
+            except OSError as err:
+                if not os.path.exists(dirname):
+                    raise err
+                else:
+                    logger.warn("Concurrent creation of %s",dirname)
+
         cmd = [self.java,
             "-Xmx3g","-Xmn1g",
             "-jar",str(self.jar),
@@ -78,8 +88,8 @@ class EppicCli(Task):
 
         rtn = -1
         if log is not None:
-            with self.output()["log"].open('w') as out:
-                out.write("CMD: "+" ".join(cmd))
+            with log.open('w') as out:
+                out.write("CMD: %s\n"%" ".join(cmd))
                 out.flush()
                 rtn = subprocess.call(cmd,stdout=out,stderr=subprocess.STDOUT)
         else:
@@ -110,28 +120,34 @@ class CreateEppicConfig(Task):
             else:
                 out.write(confstr)
 
-# Note that this superclass order is required
 @inherits(EppicCli)
 class SGEEppicCli(CustomSGEJobTask):
     def requires(self):
-        return {
-                "conf":Createeppicconfig(),
-                "jar":ExternalFile(filename=self.jar),
+        reqs = {
+                "conf":self.clone(CreateEppicConfig),
+                "jar":self.clone(ExternalFile,filename=self.jar),
                 }
+        # Require uniprot database for entropies
+        if not self.skip_entropy:
+            # Stub fails if the db is missing rather than calculating it
+            reqs["db"] = self.clone(UniprotUploadStub,remote_host="localhost")
+        return reqs
 
     def outputdir(self):
         return str(self.out).format(mid2=self.pdb[1:3].lower(),pdb=self.pdb.lower())
     def output(self):
-        return {
-            "log":LocalTarget(self.log) if self.log is not None else None,
+        outs = {
             "dir":LocalTarget(self.outputdir()),
             "finished":LocalTarget("{}/finished".format(self.outputdir()) )
             }
+        if self.log:
+            outs["log"]=LocalTarget(self.log)
+        return outs
 
     def work(self):
-        conf = self.input()["conf"]
+        conf = self.requires()["conf"]
         outs = self.output()
-        log = outs["log"]
+        log = outs.get("log") #None if not set
 
         dirname = os.path.dirname(self.outputdir())
         if not os.path.exists(dirname):
@@ -150,16 +166,18 @@ class SGEEppicCli(CustomSGEJobTask):
             "-o", str(self.outputdir()),
             "-a","1", #threads
             "-w", #webui.dat
-            "-g",conf.open().name, #Is there a way to get the path without opening it?
+            "-g",conf.eppic_cli_conf_file,
             "-l", #pymol images
-            #"-s", #entropy scores
             "-P", #assembly diagrams
             "-p", #interface coordinates
         ]
+        if not self.skip_entropy:
+            cmd.append("-s") #entropy scores
+
         rtn = -1
         if log is not None:
             with log.open('w') as out:
-                out.write("CMD: "+" ".join(cmd))
+                out.write("CMD: %s\n"%" ".join(cmd))
                 out.flush()
                 rtn = subprocess.call(cmd,stdout=out,stderr=subprocess.STDOUT)
         else:
