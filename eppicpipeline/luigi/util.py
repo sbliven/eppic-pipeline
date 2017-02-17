@@ -1,9 +1,12 @@
 import luigi
 from luigi import Task,Parameter,LocalTarget,ExternalTask
 import urllib2
-import subprocess
+import subprocess32
 import logging
+import os
+import shlex
 from luigi.contrib.ssh import RemoteTarget
+from eppicpipeline.luigi.eppic_config import eppicconfig
 
 logger = logging.getLogger('luigi-interface')
 
@@ -49,16 +52,18 @@ class RsyncTask(Task):
 
     Also note that src should end with at / if it is a directory.
     """
-    opts = Parameter(description="options passed to rsync",default="-az")
+    sentinel_dir = Parameter(description="Directory for sentinel files. May be emptied between runs with impunity.",
+        default=eppicconfig().sentinel_dir)
+    seed = Parameter(description="Unique seed to ensure the task runs")
+
+    opts = Parameter(description="options passed to rsync",default="-avz")
     src = Parameter()
     dst = Parameter()
     src_host = Parameter(default="")
     src_user = Parameter(default="")
     dst_host = Parameter(default="")
     dst_user = Parameter(default="")
-    def __init__(self,*args,**kwargs):
-        super(RsyncTask,self).__init__(*args,**kwargs)
-        self._has_run = False
+
     def requires(self):
         if self.src_host:
             yield RemoteExternalFile(filename=self.src,host=self.src_host,user=self.src_user)
@@ -66,10 +71,14 @@ class RsyncTask(Task):
             yield ExternalFile(filename=self.src)
 
     def output(self):
+        outs = {}
+        sentinel = os.path.join(self.sentinel_dir,"sentinel_"+str(self))
+        outs["sentinel"] = LocalTarget(sentinel)
         if self.dst_host:
-            yield RemoteTarget(self.dst,self.dst_host,user=self.dst_user)
+            outs["dst"] = RemoteTarget(self.dst,self.dst_host,user=self.dst_user)
         else:
-            yield LocalTarget(self.dst)
+            outs["dst"] = LocalTarget(self.dst)
+        return outs
 
     def complete(self):
         #TODO work out how to do this
@@ -77,10 +86,10 @@ class RsyncTask(Task):
         return self._has_run and super(RsyncTask,self).complete()
 
     def run(self):
-        self._has_run = True
+        outs = self.output()
 
         # build command
-        cmd = ["rsync", self.opts]
+        cmd = ["rsync"] + shlex.split(self.opts)
         srcparts = []
         if self.src_host:
             if self.src_user:
@@ -102,10 +111,19 @@ class RsyncTask(Task):
         cmd.append("".join(dstparts))
 
         logger.debug("Calling %s"," ".join(cmd))
-        rtn = subprocess.call(cmd)
+        p = subprocess32.Popen(cmd, stdout=subprocess32.PIPE,
+                               stderr=subprocess32.STDOUT,
+                               bufsize=1, #line buffered
+                               universal_newlines=True)
+        with p.stdout:
+            for line in iter(p.stdout.readline, b''):
+                logger.info("%s %s"%(self.task_id,line.rstrip()))
 
-        if rtn:
-            raise IncompleteException("rsync existed with status %d"%rtn)
+        if p.returncode != 0:
+            raise IncompleteException("rsync existed with status %d"%p.returncode)
+
+        # touch sentinel
+        with outs["sentinel"].open('w'): pass
 
         # note that this only checks for the top-level dir
         #if not all(o.exists() for o in self.output()):

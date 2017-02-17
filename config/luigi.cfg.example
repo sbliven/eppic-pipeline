@@ -35,6 +35,8 @@ wui_files=./wui/files3_{db}_test
 # Uniprot download directory. Contains the blast_db_dir and unique_fasta
 #uniprot_dir=./eppic_{db}
 
+# Directory for sentinel files. May be emptied between runs with impunity.
+#sentinel_dir=/tmp/luigi_sentinels/
 
 ## Vars for running EPPIC
 
