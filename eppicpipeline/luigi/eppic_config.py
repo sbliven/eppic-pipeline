@@ -14,6 +14,10 @@ def eppicconfig():
     """Shorthand for EppicConfig.instance()"""
     return EppicConfig.instance()
 
+def expandeppicvars(var):
+    """Helper function to perform variable expansion using the EppicConfig context"""
+    return var.format(**EppicConfig.instance().__dict__)
+
 class EppicConfig(luigi.Config):
     """Global EPPIC configuration parameters
 
@@ -86,9 +90,9 @@ class EppicConfig(luigi.Config):
 
     _instance = None
     @classmethod
-    def instance(cls):
+    def instance(cls,*args,**kwargs):
         if cls._instance is None:
-            cls._instance = cls()
+            cls._instance = cls(*args,**kwargs)
         return cls._instance
 
     def __getattribute__(self,name):

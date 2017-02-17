@@ -10,6 +10,7 @@ import logging
 import os
 from eppicpipeline.luigi.util import IncompleteException,ExternalFile
 from eppicpipeline.luigi.uniprot import UniprotUploadStub
+from eppicpipeline.luigi.database import SafeMySqlTarget
 
 logger = logging.getLogger('luigi-interface')
 
@@ -17,10 +18,11 @@ logger = logging.getLogger('luigi-interface')
 class SiftsFile(Task):
     pass
 
+
 class EppicCli(Task):
     #input; required
     pdb = Parameter(description="Input PDB ID")
-    out = Parameter(default="{}/data/divided/{{mid2}}/{{pdb}}".format(
+    out = Parameter(default="{0}/data/divided/{{mid2}}/{{pdb}}".format(
         eppicconfig().wui_files)
     )
     log = Parameter(default="") #Empty for no log
@@ -49,7 +51,7 @@ class EppicCli(Task):
     def output(self):
         outs = {
             "dir":LocalTarget(self.outputdir()),
-            "finished":LocalTarget("{}/finished".format(self.outputdir()) )
+            "finished":LocalTarget("{0}/finished".format(self.outputdir()) )
             }
         if self.log:
             outs["log"]=LocalTarget(self.log)
@@ -138,7 +140,7 @@ class SGEEppicCli(CustomSGEJobTask):
     def output(self):
         outs = {
             "dir":LocalTarget(self.outputdir()),
-            "finished":LocalTarget("{}/finished".format(self.outputdir()) )
+            "finished":LocalTarget("{0}/finished".format(self.outputdir()) )
             }
         if self.log:
             outs["log"]=LocalTarget(self.log)
@@ -225,6 +227,57 @@ class SGEEppicList(EppicList):
                     log=logfile)
 
 
-@requires(SGEEppicList)
-class Main(WrapperTask):
-    pass
+class UploadEppicCli(Task):
+    """Uploads the result files from an EppicList to the database"""
+    wui_files = Parameter(description="Output file root",default=eppicconfig().wui_files)
+    input_list = Parameter(description="File containing a list of PDB IDs to run")
+
+    jar = Parameter(description="Eppic DB jar",default=eppicconfig().eppic_db_jar)
+    java = Parameter(default=eppicconfig().java)
+
+    eppic_db = Parameter(default=eppicconfig().eppic_db)
+    mysql_host = Parameter(default=eppicconfig().mysql_host)
+    mysql_user = Parameter(default=eppicconfig().mysql_root_user,significant=False)
+    mysql_password = Parameter(default=eppicconfig().mysql_root_password,significant=False)
+
+    def requires(self):
+        reqs = {
+            "wui_files": ExternalFile(self.wui_files),
+            "input_list": ExternalFile(self.input_list),
+        }
+        return reqs
+
+    def output(self):
+        return SafeMySqlTarget(
+                host=self.mysql_host,
+                database=self.eppic_db,
+                user=self.mysql_user,
+                password=self.mysql_password,
+                table="eppic",
+                update_id="{eppic_db}|{input_list}".format(**self.__dict__)
+                )
+
+    def run(self):
+        cmd = [self.java,
+            "-Xmx3g","-Xmn1g",
+            "-jar", str(self.jar),
+            "UploadToDb",
+            "-D", self.eppic_db, #database name
+            "-d", os.path.join(self.wui_files,"data"), # output file root (should contain 'divided/')
+            "-l", #divided layout
+            "-f", self.input_list
+            #TODO create passwords from global config. For now, rely on eppic-db.properties
+            #"-g", config, # config file with database access params
+            #"-r", #remove entries
+            #"-F", #force overwrite
+        ]
+        logger.info("Calling %s"," ".join(cmd))
+        rtn = subprocess.call(cmd)
+        if rtn > 0:
+            raise IncompleteException("Non-zero return value (%d) from %s"%(rtn," ".join(cmd)))
+
+        #TODO need better checking of completion. This marks it as complete even if things go wrong
+        self.output().touch()
+
+        if not self.complete():
+            raise IncompleteException("Some outputs were not generated")
