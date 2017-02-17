@@ -27,9 +27,7 @@ class UniprotUploadTask(Task):
     jar = luigi.Parameter(default=eppicconfig().eppic_cli_jar)
     uniprot_db = Parameter(default=eppicconfig().uniprot_db)
 
-    mysql_host = Parameter(default=eppicconfig().mysql_host)
-    mysql_user = Parameter(default=eppicconfig().mysql_root_user,significant=False)
-    mysql_password = Parameter(default=eppicconfig().mysql_root_password,significant=False)
+    mysql_host = Parameter(default=eppicconfig().mysql_host,significant=False)
 
     remote_host = Parameter(description="Remote host to copy results to")
     remote_user = Parameter(description="Username of remote host",default="")
@@ -71,8 +69,8 @@ class UniprotUploadTask(Task):
             "uniprot_db": MySqlTarget(
                     host=self.mysql_host,
                     database=self.uniprot_db,
-                    user=self.mysql_user,
-                    password=self.mysql_password,
+                    user=eppicconfig().mysql_root_user,
+                    password=eppicconfig().mysql_root_password,
                     table="uniprot",
                     update_id=self.uniprot_db)
         }
@@ -97,9 +95,9 @@ class UniprotUploadTask(Task):
         uniprot_dir = outs["uniprot_dir"]
 
         #Validate Parameters
-        if not self.mysql_user:
+        if not eppicconfig().mysql_root_user:
             raise ValueError("No Mysql User")
-        if not self.mysql_password:
+        if not eppicconfig().mysql_root_password:
             raise ValueError("No Mysql Password")
         if not self.mysql_host:
             raise ValueError("No Mysql Host")
@@ -108,7 +106,7 @@ class UniprotUploadTask(Task):
         if self.resume_step >= 7 and self.overwrite_behavior == "DROP":
             raise ValueError("Set to DROP databases, but resuming from after their recreation. Did you mean --overwrite-behavior=IGNORE?")
 
-        logger.info("mysql -h %s -u %s"%(self.mysql_host,self.mysql_user))
+        logger.info("mysql -h %s -u %s"%(self.mysql_host,eppicconfig().mysql_root_user))
 
         #Use temporary directory
         if not self.resume_dir:
@@ -120,9 +118,9 @@ class UniprotUploadTask(Task):
             # TODO finish parameterizing the UniprotUpload settings
             p.eppicjar = self.jar
             p.uniprotDatabase = self.uniprot_db
-            p.mysqluser = self.mysql_user
+            p.mysqluser = eppicconfig().mysql_root_user
             p.mysqlhost = self.mysql_host
-            p.mysqlpasswd = self.mysql_password
+            p.mysqlpasswd = eppicconfig().mysql_root_password
             if self.remote_user:
                 p.userName = self.remote_user
             p.remoteHost = self.remote_host

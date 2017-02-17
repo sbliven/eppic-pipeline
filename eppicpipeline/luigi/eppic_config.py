@@ -79,6 +79,7 @@ class EppicConfig(luigi.Config):
 
 
     ## credentials.cfg
+    ## NEVER USE THESE AS TASK PARAMETERS
     mysql_user= Parameter(description="MySQL user for standard actions",default="",significant=False)
     mysql_password= Parameter(description="MySQL password for standard actions",default="",significant=False)
     # MySQL user with create database permissions

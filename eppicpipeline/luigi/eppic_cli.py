@@ -32,8 +32,6 @@ class EppicCli(Task):
                                  significant=True)
 
     mysql_host = Parameter(default=eppicconfig().mysql_host)
-    mysql_user = Parameter(default=eppicconfig().mysql_root_user,significant=False)
-    mysql_password = Parameter(default=eppicconfig().mysql_root_password,significant=False)
 
     def requires(self):
         reqs = {
@@ -237,8 +235,6 @@ class UploadEppicCli(Task):
 
     eppic_db = Parameter(default=eppicconfig().eppic_db)
     mysql_host = Parameter(default=eppicconfig().mysql_host)
-    mysql_user = Parameter(default=eppicconfig().mysql_root_user,significant=False)
-    mysql_password = Parameter(default=eppicconfig().mysql_root_password,significant=False)
 
     def requires(self):
         reqs = {
@@ -251,8 +247,8 @@ class UploadEppicCli(Task):
         return SafeMySqlTarget(
                 host=self.mysql_host,
                 database=self.eppic_db,
-                user=self.mysql_user,
-                password=self.mysql_password,
+                user=eppicconfig().mysql_root_user,
+                password=eppicconfig().mysql_root_password,
                 table="eppic",
                 update_id="{eppic_db}|{input_list}".format(**self.__dict__)
                 )
