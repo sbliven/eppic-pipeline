@@ -157,7 +157,3 @@ class UniprotUploadStub(UniprotUploadTask):
     def run(self):
         logger.info("Unfulfilled outputs: %s", ", ".join([k for k,v in self.output().items() if not v.exists()]))
         raise IncompleteException("This stub implementation requires external population of the database")
-
-class Main(WrapperTask):
-    def requires(self):
-        return UniprotUploadTask()

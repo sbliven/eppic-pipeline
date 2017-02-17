@@ -19,9 +19,12 @@ class ExternalFile(ExternalTask):
 class RemoteExternalFile(ExternalTask):
     filename = Parameter()
     host = Parameter()
+    user = Parameter(default="")
 
     def output(self):
-        return RemoteTarget(self.filename,self.host)
+        #TODO also accepts parameters: username, key_file, connect_timeout, port,
+        # no_host_key_check, sshpass, and tty (See luigi.contrib.ssh.RemoteContext)
+        return RemoteTarget(self.filename,self.host,username=self.user if self.user else None)
 
 class CachedRemoteFile(Task):
     """Download a remote file to a known local location"""
@@ -44,9 +47,6 @@ class RsyncTask(Task):
     """
     Uses rsync to transfer directories between potentially remote destinations
 
-    Note that this should only be used for initial transfers, as it will not
-    be run if the destination directory exists.
-
     Also note that src should end with at / if it is a directory.
     """
     opts = Parameter(description="options passed to rsync",default="-az")
@@ -56,19 +56,29 @@ class RsyncTask(Task):
     src_user = Parameter(default="")
     dst_host = Parameter(default="")
     dst_user = Parameter(default="")
+    def __init__(self,*args,**kwargs):
+        super(RsyncTask,self).__init__(*args,**kwargs)
+        self._has_run = False
     def requires(self):
         if self.src_host:
-            yield RemoteExternalFile(filename=self.src,host=self.src_host)
+            yield RemoteExternalFile(filename=self.src,host=self.src_host,user=self.src_user)
         else:
             yield ExternalFile(filename=self.src)
 
     def output(self):
         if self.dst_host:
-            yield RemoteTarget(self.dst,self.dst_host)
+            yield RemoteTarget(self.dst,self.dst_host,user=self.dst_user)
         else:
             yield LocalTarget(self.dst)
 
+    def complete(self):
+        #TODO work out how to do this
+        return True
+        return self._has_run and super(RsyncTask,self).complete()
+
     def run(self):
+        self._has_run = True
+
         # build command
         cmd = ["rsync", self.opts]
         srcparts = []
@@ -98,5 +108,6 @@ class RsyncTask(Task):
             raise IncompleteException("rsync existed with status %d"%rtn)
 
         # note that this only checks for the top-level dir
+        #if not all(o.exists() for o in self.output()):
         if not self.complete():
             raise IncompleteException("rsync failed")
