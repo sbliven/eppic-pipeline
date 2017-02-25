@@ -4,7 +4,11 @@
 
 The EPPIC pipeline is composed primarily of a python package. This can be installed easily using the setup script. For development, it is recommended to install into a [virtualenv](https://pypi.python.org/pypi/virtualenv) environment to isolate any dependencies and reduce the need for root permissions. On the dev server this environment is activated with the command `workon luigi`, while the merlin cluster uses a slightly different command (see below).
 
+Several important additions have been added to luigi. First, install luigi from the _eppic-team_ fork. Then, the eppicpipeline package can be installed in the usual way.
+
 ```
+pip install https://github.com/eppic-team/luigi/archive/master.zip
+
 python setup.py install
 ```
 
