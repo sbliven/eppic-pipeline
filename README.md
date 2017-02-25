@@ -107,6 +107,15 @@ luigi --module eppicpipeline.luigi.eppic_cli SGEEppicList --input-list=$HOME/pdb
 
 To run locally, use the `EppicList` task instead.
 
+## Cleaning up
+
+After running, an easy way to wipe the scratch dirs is to sync an empty blast_database directory:
+
+```
+mkdir /tmp/blast_database
+luigi --module eppicpipeline.luigi.sge_pipeline ScratchDistributor --seed=`date +%s` --blast-db-dir=/tmp/blast_database/
+```
+
 
 
 # Known bugs
