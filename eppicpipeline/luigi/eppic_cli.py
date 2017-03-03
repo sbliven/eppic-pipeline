@@ -206,11 +206,11 @@ class EppicList(WrapperTask):
                         for pdb in inputs
                         if pdb.strip() and pdb[0]!='#' ]
                 for dep in deps:
-                    logger.debug("Requiring %s"%dep)#(dep.__class__.__name__,dep.pdb if dep is not None else None))
+                    #logger.debug("Requiring %s"%dep)#(dep.__class__.__name__,dep.pdb if dep is not None else None))
                     yield dep
 
     def makeTask(self,pdb):
-        logger.info("Creating EppicCli task for %s"%pdb)
+        #logger.info("Creating EppicCli task for %s"%pdb)
         outputdir = os.path.join(self.wui_files, "data", "divided", pdb[1:3].lower(), pdb.lower())
         logfile = os.path.join(outputdir,pdb+".out")
         return self.clone(EppicCli, pdb=pdb, out=outputdir, log=logfile)
