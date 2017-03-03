@@ -1,7 +1,7 @@
 import logging
 import luigi
 import os
-from luigi.contrib.sge import SGEJobTask,LocalSGEJobTask
+from luigi.contrib.sge import SGEJobTask,LocalSGEJobTask,_build_qsub_command
 import subprocess
 from luigi.contrib import sge_runner
 
@@ -9,15 +9,6 @@ logger = logging.getLogger('luigi-interface')
 
 import eppicpipeline
 luigi.contrib.sge.attach(eppicpipeline)
-
-def _build_qsub_command(cmd, job_name, outfile, errfile, pe, n_cpu):
-    """Submit shell command to SGE queue via `qsub`"""
-    qsub_template = """echo "{cmd}" | qsub -o ":{outfile}" -e ":{errfile}" -V -r y -pe {pe} {n_cpu} -N {job_name}"""
-    escaped_cmd = cmd.replace('"','\\"')
-    return qsub_template.format(
-        cmd=escaped_cmd, job_name=job_name, outfile=outfile, errfile=errfile,
-        pe=pe, n_cpu=n_cpu)
-
 
 class CustomSGEJobTask(SGEJobTask):
     """ Equivalent to SGEJobTask, but allows custom commands to be passed to qsub
