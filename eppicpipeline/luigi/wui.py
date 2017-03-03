@@ -14,8 +14,6 @@ class RsyncWuiFiles(WrapperTask):
     wui_files = Parameter(description="Local EPPIC output files",default=eppicconfig().wui_files)
     seed = Parameter(description="Unique seed to ensure the task runs")
     opts = Parameter(description="options passed to rsync",default="-avz --delete")
-    sentinel_dir = Parameter(description="Directory for sentinel files. May be emptied between runs with impunity.",
-        default=eppicconfig().sentinel_dir)
 
     def requires(self):
         out = expandeppicvars(self.compute_wui_files)
@@ -27,7 +25,6 @@ class RsyncWuiFiles(WrapperTask):
                                dst=self.wui_files,
                                dst_host="", #localhost
                                seed=self.seed,
-                               sentinel_dir=self.sentinel_dir,
                                opts=self.opts,
                                )
         }

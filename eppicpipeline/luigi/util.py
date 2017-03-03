@@ -80,11 +80,6 @@ class RsyncTask(Task):
             outs["dst"] = LocalTarget(self.dst)
         return outs
 
-    def complete(self):
-        #TODO work out how to do this
-        return True
-        return self._has_run and super(RsyncTask,self).complete()
-
     def run(self):
         outs = self.output()
 
