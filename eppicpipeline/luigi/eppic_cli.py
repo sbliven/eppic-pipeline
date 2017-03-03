@@ -277,3 +277,55 @@ class UploadEppicCli(Task):
 
         if not self.complete():
             raise IncompleteException("Some outputs were not generated")
+
+
+@inherits(EppicList)
+class CheckList(Task):
+    success_list = Parameter(description="Output file with elements of input_list that exist in wui_files",default="")
+    fail_list = Parameter(description="Output file with elements of input_list that do not exist in wui_files",default="")
+
+    def __init__(self,*args,**kwargs):
+        # Super doesn't work with decorated classes
+        #super(CheckList,self).__init__(*args,**kwargs)
+        Task.__init__(self,*args,**kwargs)
+        self._eppiclist = self.clone(EppicList)
+
+    def requires(self):
+        yield ExternalFile(self.wui_files)
+        # First requirement is the input_list
+        yield next(self._eppiclist.requires())
+
+    def output(self):
+        outs = {}
+        if self.success_list:
+            outs["success_list"] = LocalTarget(self.success_list)
+        if self.fail_list:
+            outs["fail_list"] = LocalTarget(self.fail_list)
+        return outs
+
+    def run(self):
+        reqs = self.requires()
+        outs = self.output()
+
+        # with reqs["input_list"].output().open('r') as inlist:
+        try:
+            success = None
+            fail = None
+            if self.success_list:
+                success = outs["success_list"].open('w')
+            if self.fail_list:
+                fail = outs["fail_list"].open('w')
+
+            for eppiccli in self._eppiclist.requires():
+                # duck typing for EppicCli instances
+                if hasattr(eppiccli,"pdb"):
+                    if eppiccli.complete() and self.success_list:
+                        success.write(eppiccli.pdb+"\n")
+                    if not eppiccli.complete() and self.fail_list:
+                        fail.write(eppiccli.pdb+"\n")
+
+        finally:
+            if success is not None:
+                success.close()
+            if fail is not None:
+                fail.close()
