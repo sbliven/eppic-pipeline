@@ -281,19 +281,17 @@ class UploadEppicCli(Task):
 
 @inherits(EppicList)
 class CheckList(Task):
+    wui_files = Parameter(description="Output file root",default=eppicconfig().wui_files)
+    input_list = Parameter(description="File containing a list of PDB IDs to run")
     success_list = Parameter(description="Output file with elements of input_list that exist in wui_files",default="")
     fail_list = Parameter(description="Output file with elements of input_list that do not exist in wui_files",default="")
 
-    def __init__(self,*args,**kwargs):
-        # Super doesn't work with decorated classes
-        #super(CheckList,self).__init__(*args,**kwargs)
-        Task.__init__(self,*args,**kwargs)
-        self._eppiclist = self.clone(EppicList)
-
     def requires(self):
-        yield ExternalFile(self.wui_files)
-        # First requirement is the input_list
-        yield next(self._eppiclist.requires())
+        reqs = {
+            "wui_files": ExternalFile(self.wui_files),
+            "input_list": ExternalFile(self.input_list),
+        }
+        return reqs
 
     def output(self):
         outs = {}
@@ -307,25 +305,32 @@ class CheckList(Task):
         reqs = self.requires()
         outs = self.output()
 
-        # with reqs["input_list"].output().open('r') as inlist:
-        try:
-            success = None
-            fail = None
-            if self.success_list:
-                success = outs["success_list"].open('w')
-            if self.fail_list:
-                fail = outs["fail_list"].open('w')
+        with reqs["input_list"].output().open('r') as inlist:
+            try:
+                success = None
+                fail = None
+                if self.success_list:
+                    success = outs["success_list"].open('w')
+                if self.fail_list:
+                    fail = outs["fail_list"].open('w')
 
-            for eppiccli in self._eppiclist.requires():
-                # duck typing for EppicCli instances
-                if hasattr(eppiccli,"pdb"):
-                    if eppiccli.complete() and self.success_list:
-                        success.write(eppiccli.pdb+"\n")
-                    if not eppiccli.complete() and self.fail_list:
-                        fail.write(eppiccli.pdb+"\n")
+                for line in inlist:
+                    line = line.strip()
+                    if line and line[0] != '#':
+                        pdb = line.lower()
+                        sentinel = "{0}/data/divided/{{mid2}}/{{pdb}}/finished".format(
+                            eppicconfig().wui_files,
+                            mid2=pdb[1:3],
+                            pdb=pdb)
+                        if os.path.exists(sentinel):
+                            if self.success_list:
+                                success.write(pdb+"\n")
+                        else:
+                            if self.fail_list:
+                                fail.write(pdb+"\n")
 
-        finally:
-            if success is not None:
-                success.close()
-            if fail is not None:
-                fail.close()
+            finally:
+                if success is not None:
+                    success.close()
+                if fail is not None:
+                    fail.close()
