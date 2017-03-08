@@ -32,8 +32,9 @@ class RsyncWuiFiles(WrapperTask):
 
 @inherits(UploadEppicCli)
 class Wui(WrapperTask):
+    seed = Parameter(description="Unique seed to ensure the task runs")
     def requires(self):
-        #TODO how to force Rsync to run first?
-        yield RsyncWuiFiles()
+        yield self.clone(RsyncWuiFiles)
         # yield SafeMySqlTarget()
         yield self.clone(UploadEppicCli)
+

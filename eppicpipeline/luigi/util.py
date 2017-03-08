@@ -114,8 +114,10 @@ class RsyncTask(Task):
             for line in iter(p.stdout.readline, b''):
                 logger.info("%s %s"%(self.task_id,line.rstrip()))
 
+        #Wait for return status
+        p.wait()
         if p.returncode != 0:
-            raise IncompleteException("rsync existed with status %d"%p.returncode)
+            raise IncompleteException("rsync existed with status %s"%p.returncode)
 
         # touch sentinel
         with outs["sentinel"].open('w'): pass
@@ -124,3 +126,4 @@ class RsyncTask(Task):
         #if not all(o.exists() for o in self.output()):
         if not self.complete():
             raise IncompleteException("rsync failed")
+
