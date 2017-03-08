@@ -6,6 +6,7 @@ from luigi.contrib.mysqldb import MySqlTarget
 logger = logging.getLogger('luigi-interface')
 
 def createDatabase(host, database, user, password):
+    #logger.debug("Connecting mysql -h '{host}' -u '{user}' -p'{password}'".format(host=host,user=user,password="*"*len(password)))
     with pymysql.connect(user=user, host=host, passwd=password,autocommit=True) as cursor:
         # Check if the database already exists
         chkflg=cursor.execute("SHOW DATABASES like '%s'"%(database))

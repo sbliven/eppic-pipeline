@@ -8,6 +8,7 @@ from sgetask import CustomSGEJobTask
 from luigi.util import inherits,requires
 import logging
 import os
+import glob
 from eppicpipeline.luigi.util import IncompleteException,ExternalFile
 from eppicpipeline.luigi.uniprot import UniprotUploadStub
 from eppicpipeline.luigi.database import SafeMySqlTarget
@@ -279,7 +280,6 @@ class UploadEppicCli(Task):
             raise IncompleteException("Some outputs were not generated")
 
 
-@inherits(EppicList)
 class CheckList(Task):
     wui_files = Parameter(description="Output file root",default=eppicconfig().wui_files)
     input_list = Parameter(description="File containing a list of PDB IDs to run")
@@ -336,3 +336,37 @@ class CheckList(Task):
                     success.close()
                 if fail is not None:
                     fail.close()
+
+
+class FinishedList(Task):
+    wui_files = Parameter(description="Output file root",default=eppicconfig().wui_files)
+    success_list = Parameter(description="Output file with elements of input_list that exist in wui_files")
+
+    def requires(self):
+        reqs = {
+            "wui_files": ExternalFile(self.wui_files),
+        }
+        return reqs
+
+    def output(self):
+        outs = {}
+        outs["success_list"] = LocalTarget(self.success_list)
+        return outs
+
+    def run(self):
+        reqs = self.requires()
+        outs = self.output()
+
+
+        with outs["success_list"].open('w') as success:
+            # find all files like {wui_files}/data/divided/{mid2}/{pdb}/finished
+            i=0
+            for finished in glob.glob("{0}/data/divided/??/????/finished".format(self.wui_files)):
+                pdb = os.path.basename( os.path.dirname(finished) )
+
+                success.write(pdb+"\n")
+
+                if i%100 == 0:
+                    success.flush()
+                i += 1
+
