@@ -318,11 +318,13 @@ class CheckList(Task):
                     line = line.strip()
                     if line and line[0] != '#':
                         pdb = line.lower()
-                        sentinel = "{0}/data/divided/{{mid2}}/{{pdb}}/finished".format(
-                            eppicconfig().wui_files,
+                        sentinel = "{dir}/data/divided/{mid2}/{pdb}/finished".format(
+                            dir=eppicconfig().wui_files,
                             mid2=pdb[1:3],
                             pdb=pdb)
-                        if os.path.exists(sentinel):
+                        found = os.path.exists(sentinel)
+                        logger.debug("Check {0}...{1}\t{2}".format(pdb,"FOUND" if found else "MISSED", sentinel))
+                        if found:
                             if self.success_list:
                                 success.write(pdb+"\n")
                         else:
