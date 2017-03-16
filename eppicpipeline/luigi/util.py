@@ -5,6 +5,7 @@ import subprocess32
 import logging
 import os
 import shlex
+import re
 from luigi.contrib.ssh import RemoteTarget
 from eppicpipeline.luigi.eppic_config import eppicconfig
 
@@ -72,7 +73,12 @@ class RsyncTask(Task):
 
     def output(self):
         outs = {}
-        sentinel = os.path.join(self.sentinel_dir,"sentinel_"+str(self))
+        # Make sentinel from task name, with some sanitization just in case
+        sentinel_str = "sentinel_"+self.task_id
+        sentinel_str = re.sub(r'\s+', '_', sentinel_str)
+        sentinel_str = [c for c in sentinel_str if re.match(r'\w', c)]
+
+        sentinel = os.path.join(self.sentinel_dir,sentinel_str)
         outs["sentinel"] = LocalTarget(sentinel)
         if self.dst_host:
             outs["dst"] = RemoteTarget(self.dst,self.dst_host,user=self.dst_user)
